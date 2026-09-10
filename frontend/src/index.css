@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans bg-slate-50 text-slate-900;
+  }
+}
+
+/* Smooth QR scanner viewfinder styling */
+#qr-reader {
+  width: 100% !important;
+  border: none !important;
+}
+
+#qr-reader__scan_region {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+#qr-reader__dashboard {
+  padding: 0.75rem 0 !important;
+}
+
+#qr-reader__dashboard button {
+  @apply px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg text-sm hover:bg-indigo-700 transition shadow-sm;
+}

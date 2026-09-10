@@ -1,0 +1,409 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+
+import { calculateDistance, validateGeofence } from '../src/utils/geofence.js';
+import { User } from '../src/models/User.js';
+import { Student } from '../src/models/Student.js';
+import { Device } from '../src/models/Device.js';
+import { Bus } from '../src/models/Bus.js';
+import { BusTrip } from '../src/models/BusTrip.js';
+import { QRCode } from '../src/models/QRCode.js';
+import { Attendance } from '../src/models/Attendance.js';
+import app from '../src/server.js';
+
+let mongoServer;
+let adminToken;
+let driverToken;
+let student1Token;
+let student2Token;
+let testBus;
+let activeTrip;
+let student1;
+let student2;
+
+const TEST_SECRET = 'test_jwt_secret_12345';
+process.env.JWT_SECRET = TEST_SECRET;
+process.env.NODE_ENV = 'test';
+
+test.before(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+
+  // Setup test accounts
+  const admin = await User.create({
+    name: 'Admin Test',
+    email: 'admin.test@college.edu',
+    password: 'AdminPassword123',
+    role: 'ADMIN',
+  });
+  adminToken = jwt.sign({ id: admin._id, role: 'ADMIN', email: admin.email }, TEST_SECRET);
+
+  const driver = await User.create({
+    name: 'Driver Test',
+    email: 'driver.test@college.edu',
+    password: 'DriverPassword123',
+    role: 'DRIVER',
+  });
+  driverToken = jwt.sign({ id: driver._id, role: 'DRIVER', email: driver.email }, TEST_SECRET);
+
+  const u1 = await User.create({
+    name: 'Aarav Sharma',
+    email: 'student01.test@college.edu',
+    password: 'StudentPassword123',
+    role: 'STUDENT',
+  });
+  student1 = await Student.create({
+    userId: u1._id,
+    studentId: 'STD-23CS001',
+    rollNumber: '23CS001',
+    name: 'Aarav Sharma',
+    email: u1.email,
+    department: 'Computer Science & Engineering',
+    year: '3rd Year',
+    deviceId: 'DEVICE_UUID_PHONE_01',
+    deviceRegistrationStatus: true,
+  });
+  student1Token = jwt.sign({ id: u1._id, role: 'STUDENT', email: u1.email }, TEST_SECRET);
+
+  await Device.create({
+    studentId: student1._id,
+    deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+    status: 'ACTIVE',
+  });
+
+  const u2 = await User.create({
+    name: 'Aditi Rao',
+    email: 'student02.test@college.edu',
+    password: 'StudentPassword123',
+    role: 'STUDENT',
+  });
+  student2 = await Student.create({
+    userId: u2._id,
+    studentId: 'STD-23CS002',
+    rollNumber: '23CS002',
+    name: 'Aditi Rao',
+    email: u2.email,
+    department: 'Information Technology',
+    year: '3rd Year',
+    deviceId: 'DEVICE_UUID_PHONE_02',
+    deviceRegistrationStatus: true,
+  });
+  student2Token = jwt.sign({ id: u2._id, role: 'STUDENT', email: u2.email }, TEST_SECRET);
+
+  await Device.create({
+    studentId: student2._id,
+    deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+    status: 'ACTIVE',
+  });
+
+  testBus = await Bus.create({
+    busNumber: 'BUS-01',
+    routeName: 'Test Campus Route',
+    capacity: 68,
+    defaultGeofenceRadius: 100,
+    defaultCenterLatitude: 13.0827,
+    defaultCenterLongitude: 80.2707,
+  });
+});
+
+test.after(async () => {
+  await mongoose.disconnect();
+  if (mongoServer) await mongoServer.stop();
+});
+
+// Helper for sending mock Express requests
+const makeRequest = async (method, path, body = null, headers = {}) => {
+  const url = `http://localhost:${process.env.PORT || 5000}${path}`;
+  // We can test controllers through Express app directly using supertest or app.inject/fetch if server is listening
+  // Alternatively, use node's native fetch after binding to an ephemeral port!
+  const res = await fetch(`http://127.0.0.1:${testPort}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const json = await res.json().catch(() => null);
+  return { status: res.status, body: json };
+};
+
+let serverInstance;
+let testPort;
+
+test.before(async () => {
+  await new Promise((resolve) => {
+    serverInstance = app.listen(0, () => {
+      testPort = serverInstance.address().port;
+      resolve();
+    });
+  });
+});
+
+test.after(async () => {
+  if (serverInstance) {
+    await new Promise((resolve) => serverInstance.close(resolve));
+  }
+});
+
+// TEST SUITE
+
+test('1. Haversine Formula: calculates exact distance between coordinates', () => {
+  // Same coordinates => 0 meters
+  const distZero = calculateDistance(13.0827, 80.2707, 13.0827, 80.2707);
+  assert.equal(distZero, 0);
+
+  // Slight delta: ~55 meters away
+  const distClose = calculateDistance(13.0827, 80.2707, 13.0832, 80.2707);
+  assert.ok(distClose > 50 && distClose < 60, `Expected ~55m, got ${distClose}`);
+
+  // Outside geofence: ~550 meters away
+  const distFar = calculateDistance(13.0827, 80.2707, 13.0877, 80.2707);
+  assert.ok(distFar > 500, `Expected > 500m, got ${distFar}`);
+
+  // Geofence helper checks
+  const insideCheck = validateGeofence(13.0827, 80.2707, 10, 13.0827, 80.2707, 100);
+  assert.equal(insideCheck.isInside, true);
+  assert.equal(insideCheck.error, null);
+
+  const outsideCheck = validateGeofence(13.0877, 80.2707, 10, 13.0827, 80.2707, 100);
+  assert.equal(outsideCheck.isInside, false);
+  assert.equal(outsideCheck.error, 'You are outside the permitted bus area.');
+});
+
+test('2. Attendance Security: blocks request when no active trip exists', async () => {
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: 'dummy_token',
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 15,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.message, 'Attendance is currently closed.');
+});
+
+test('3. Bus Trip: Driver starts trip and dynamic QR is generated', async () => {
+  const res = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      busId: testBus._id,
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 100,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+
+  assert.equal(res.status, 201);
+  assert.equal(res.body.success, true);
+  assert.ok(res.body.trip);
+  assert.equal(res.body.trip.status, 'ACTIVE');
+  assert.ok(res.body.initialQR.token);
+
+  activeTrip = res.body.trip;
+});
+
+test('4. Dynamic QR: returns active valid token with countdown', async () => {
+  const res = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+
+  assert.equal(res.status, 200);
+  assert.ok(res.body.token);
+  assert.ok(res.body.remainingSeconds > 0);
+  assert.equal(res.body.totalValiditySeconds, 25);
+});
+
+test('5. Valid Attendance: Student 1 scans valid QR inside geofence with registered device', async () => {
+  // Get current QR
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827, // Same as bus location
+      longitude: 80.2707,
+      gpsAccuracy: 12,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+
+  assert.equal(res.status, 201);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.attendance.status, 'PRESENT');
+  assert.equal(res.body.attendance.rollNumber, '23CS001');
+});
+
+test('6. Anti-Proxy: blocks duplicate attendance on same trip', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.message, 'Attendance already marked for this trip.');
+});
+
+test('7. Anti-Proxy: blocks device mismatch (proxy attempt with another device ID)', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  // Student 2 tries using an unregistered phone / student 1's phone ID
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'FAKE_OR_WRONG_DEVICE_ID',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+
+  assert.equal(res.status, 403);
+  assert.equal(res.body.message, 'This account is registered to another device.');
+});
+
+test('8. Anti-Proxy: blocks attendance with expired QR token', async () => {
+  // Create an explicitly expired token
+  const expiredToken = crypto.randomBytes(16).toString('hex');
+  await QRCode.create({
+    token: expiredToken,
+    tripId: activeTrip._id,
+    expiresAt: new Date(Date.now() - 5000), // 5 seconds in the past
+    isActive: true,
+  });
+
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: expiredToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.message, 'QR code expired. Please scan the current QR.');
+});
+
+test('9. Anti-Proxy: blocks attendance when student is outside geofence', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  // Position ~600 meters away
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.0880,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.message, 'You are outside the permitted bus area.');
+});
+
+test('10. Anti-Proxy: blocks attendance when GPS accuracy is too low (> 100m)', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 150, // 150m accuracy is too low!
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+
+  assert.equal(res.status, 400);
+  assert.equal(res.body.message, 'GPS accuracy is too low. Please enable high-accuracy location.');
+});
+
+test('11. Security: blocks non-student (Driver/Admin) from marking student attendance', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'SOME_DEVICE',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+
+  assert.equal(res.status, 403);
+});
+
+test('12. Admin & Driver: Stop trip closes attendance and recalculates percentages', async () => {
+  const stopRes = await makeRequest('POST', '/api/trips/stop', {}, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+
+  assert.equal(stopRes.status, 200);
+  assert.equal(stopRes.body.success, true);
+  assert.ok(stopRes.body.summary);
+  assert.equal(stopRes.body.summary.presentCount, 1); // Only student 1 was marked present
+});
