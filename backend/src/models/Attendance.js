@@ -66,4 +66,7 @@ const attendanceSchema = new mongoose.Schema(
 // Unique compound index: One attendance per student per trip
 attendanceSchema.index({ studentId: 1, tripId: 1 }, { unique: true });
 
+// Unique compound index: One attendance per physical device per trip (strictly prevents 1 device marking for another person)
+attendanceSchema.index({ tripId: 1, deviceId: 1 }, { unique: true });
+
 export const Attendance = mongoose.model('Attendance', attendanceSchema);

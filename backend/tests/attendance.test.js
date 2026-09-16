@@ -24,6 +24,8 @@ let testBus;
 let activeTrip;
 let student1;
 let student2;
+let student3;
+let student3Token;
 
 const TEST_SECRET = 'test_jwt_secret_12345';
 process.env.JWT_SECRET = TEST_SECRET;
@@ -102,6 +104,26 @@ test.before(async () => {
     deviceIdentifier: 'DEVICE_UUID_PHONE_02',
     status: 'ACTIVE',
   });
+
+  const u3 = await User.create({
+    name: 'Vikram Singh',
+    email: 'student03.test@college.edu',
+    password: 'StudentPassword123',
+    role: 'STUDENT',
+  });
+  student3 = await Student.create({
+    userId: u3._id,
+    studentId: 'STD-23CS003',
+    rollNumber: '23CS003',
+    name: 'Vikram Singh',
+    email: u3.email,
+    department: 'Mechanical Engineering',
+    year: '2nd Year',
+    gender: 'Male',
+    deviceId: null,
+    deviceRegistrationStatus: false,
+  });
+  student3Token = jwt.sign({ id: u3._id, role: 'STUDENT', email: u3.email }, TEST_SECRET);
 
   testBus = await Bus.create({
     busNumber: 'BUS-01',
@@ -425,7 +447,54 @@ test('12. Concurrent Attendance: Multiple students (Student 2) mark attendance w
   assert.equal(res.body.attendance.rollNumber, '23CS002');
 });
 
-test('13. Admin & Driver: Stop trip closes attendance and recalculates percentages', async () => {
+test('13. Anti-Proxy: prevents one physical device from being registered by multiple students', async () => {
+  const res = await makeRequest(
+    'POST',
+    '/api/devices/register',
+    {
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01', // Already registered to Student 1
+      userAgent: 'Mozilla/5.0 AntiProxyTest',
+    },
+    { Authorization: `Bearer ${student3Token}` }
+  );
+
+  assert.equal(res.status, 403);
+  assert.equal(res.body.success, false);
+  assert.match(res.body.message, /Anti-Proxy Security: This device is already registered to 23CS001/);
+});
+
+test('14. Anti-Proxy: strictly prevents a single physical device from marking attendance for multiple students on the same trip', async () => {
+  // Configure student3 with deviceId matching student1's device to test attendance-level trip check
+  await Student.updateOne({ _id: student3._id }, { deviceId: 'DEVICE_UUID_PHONE_01', deviceRegistrationStatus: true });
+
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  // Student 3 tries to mark attendance on the same active trip using Student 1's device
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 12,
+    },
+    { Authorization: `Bearer ${student3Token}` }
+  );
+
+  assert.equal(res.status, 403);
+  assert.equal(res.body.success, false);
+  assert.match(
+    res.body.message,
+    /Anti-Proxy Violation: This device has already marked attendance for 23CS001 \(Aarav Sharma\) on this trip/
+  );
+});
+
+test('15. Admin & Driver: Stop trip closes attendance and recalculates percentages', async () => {
   const stopRes = await makeRequest('POST', '/api/trips/stop', {}, {
     Authorization: `Bearer ${driverToken}`,
   });
@@ -436,7 +505,7 @@ test('13. Admin & Driver: Stop trip closes attendance and recalculates percentag
   assert.equal(stopRes.body.summary.presentCount, 2); // Both Student 1 (Boy) and Student 2 (Girl) marked present with same QR
 });
 
-test('14. Admin: Export Excel contains Boys/Girls attendance report and absent lists', async () => {
+test('16. Admin: Export Excel contains Boys/Girls attendance report and absent lists', async () => {
   const res = await fetch(`http://127.0.0.1:${testPort}/api/admin/export-excel`, {
     method: 'GET',
     headers: {

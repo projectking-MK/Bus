@@ -290,7 +290,7 @@ cd backend
 npm test
 ```
 
-### Verified Test Scenarios:
+### Verified Test Scenarios (16 Comprehensive Tests):
 1. **Haversine Distance**: Verifies accurate mathematical distance computation between coordinates (0m, ~55m, >500m).
 2. **Trip Validation**: Blocks attendance if no active trip is running.
 3. **Driver Trip Start**: Verifies trip creation and initial 20-minute (1200s) QR token generation.
@@ -303,8 +303,27 @@ npm test
 10. **Anti-Proxy (Low Accuracy)**: Blocks coarse location attempts (>100m GPS error).
 11. **Role Enforcement**: Prevents drivers/admins from marking student attendance.
 12. **Concurrent Attendance (55 Students)**: Verifies multiple students marking attendance simultaneously using the SAME 20-minute QR token.
-13. **Trip Stop**: Successfully closes attendance and recalculates attendance percentages.
-14. **Excel (.xlsx) Export Verification**: Confirms generation of valid Excel binary spreadsheet with boys/girls present metrics, absent boys with name and year, and absent girls with name and year.
+13. **Anti-Proxy (Single Device Registration Lock)**: Prevents one physical device from being registered to multiple student accounts (`403 Anti-Proxy Security: This device is already registered to...`).
+14. **Anti-Proxy (Single Device Trip Reuse Lock)**: Strictly blocks a physical device from marking attendance for more than one student on the same trip (`403 Anti-Proxy Violation: This device has already marked attendance for... on this trip`).
+15. **Trip Stop**: Successfully closes attendance and recalculates attendance percentages.
+16. **Excel (.xlsx) Export Verification**: Confirms generation of valid Excel binary spreadsheet with boys/girls present metrics, absent boys with name and year, and absent girls with name and year.
+
+---
+
+### 🛡️ Single-Device Anti-Proxy Protection (How It Works)
+
+To prevent a student with a single phone from marking attendance ("putting present") for another friend:
+1. **1:1 Hardware Fingerprint Lock**:
+   - Each device generates a persistent, unique hardware identifier stored in client storage.
+   - When a student logs in for the first time, this fingerprint is bound to their student record in MongoDB with a unique index.
+   - If another student logs into their account on that same phone, the system rejects the device binding with HTTP 403.
+2. **Trip-Level Device Single-Use Lock**:
+   - On every active bus trip, the database and controller enforce that each physical `deviceId` can only record attendance **once**.
+   - Even if someone attempts to switch accounts, the server catches that the device ID was already used on the active trip and immediately blocks attendance with HTTP 403 (`Anti-Proxy Violation: This device has already marked attendance for <RollNumber> on this trip`).
+3. **Local Testing Tip**:
+   - If you are testing locally on a single computer or laptop, two tabs in the same browser window share the same `localStorage` (simulating the **same phone** — and the anti-proxy system will rightfully block the second student!).
+   - To simulate **two different physical phones**, test one student in a normal browser window and the second student in an **Incognito / Private window** (or a second browser such as Chrome and Edge).
+
 ---
 
 ## ☁️ MongoDB Atlas Setup

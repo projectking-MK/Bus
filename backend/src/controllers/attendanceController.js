@@ -28,7 +28,7 @@ export const markAttendance = async (req, res) => {
       });
     }
 
-    // 4. Device verification
+    // 4. Device presence check
     const deviceId = deviceIdentifier || req.headers['x-device-id'];
     if (!deviceId) {
       return res.status(400).json({
@@ -37,6 +37,46 @@ export const markAttendance = async (req, res) => {
       });
     }
 
+    // 5. Active bus trip check
+    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
+    if (!activeTrip) {
+      return res.status(400).json({
+        success: false,
+        message: 'Attendance is currently closed.',
+      });
+    }
+
+    // 5b. Anti-Proxy Single Device Check: Ensure this physical hardware device has NOT already marked attendance for ANY other student on this active trip!
+    const deviceUsedOnTrip = await Attendance.findOne({
+      tripId: activeTrip._id,
+      deviceId: deviceId,
+      studentId: { $ne: student._id },
+    }).populate('studentId', 'rollNumber name');
+
+    if (deviceUsedOnTrip) {
+      const priorStudent = deviceUsedOnTrip.studentId;
+      const priorInfo = priorStudent ? `${priorStudent.rollNumber} (${priorStudent.name})` : 'another student';
+
+      await AuditLog.create({
+        action: 'ATTENDANCE_BLOCKED_DEVICE_REUSED_ON_TRIP',
+        performedBy: user._id,
+        targetStudentId: student._id,
+        details: {
+          deviceId,
+          tripId: activeTrip.tripId,
+          alreadyUsedFor: priorInfo,
+        },
+        ipAddress: req.ip || '',
+        status: 'FAILURE',
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: `Anti-Proxy Violation: This device has already marked attendance for ${priorInfo} on this trip. A single device cannot be used to mark attendance for multiple students.`,
+      });
+    }
+
+    // 6. Student Device registration verification
     const registeredDevice = await Device.findOne({ studentId: student._id });
     if (!registeredDevice) {
       return res.status(400).json({
@@ -58,15 +98,6 @@ export const markAttendance = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: 'This account is registered to another device.',
-      });
-    }
-
-    // 5. Active bus trip check
-    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
-    if (!activeTrip) {
-      return res.status(400).json({
-        success: false,
-        message: 'Attendance is currently closed.',
       });
     }
 
@@ -247,7 +278,12 @@ export const markAttendance = async (req, res) => {
     });
   } catch (error) {
     if (error.code === 11000) {
-      // MongoDB duplicate key error caught safely
+      if (error.keyPattern?.deviceId || (error.message && error.message.includes('deviceId'))) {
+        return res.status(403).json({
+          success: false,
+          message: 'Anti-Proxy Violation: This device has already marked attendance for another student on this trip.',
+        });
+      }
       return res.status(400).json({
         success: false,
         message: 'Attendance already marked for this trip.',

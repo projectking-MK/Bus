@@ -51,6 +51,35 @@ export const registerDevice = async (req, res) => {
       });
     }
 
+    // Check if this physical device is already bound to another student!
+    const deviceBoundToOther = await Device.findOne({
+      deviceIdentifier,
+      studentId: { $ne: student._id },
+    }).populate('studentId', 'rollNumber name');
+
+    if (deviceBoundToOther) {
+      const otherStudent = deviceBoundToOther.studentId;
+      const otherInfo = otherStudent ? `${otherStudent.rollNumber} (${otherStudent.name})` : 'another student';
+
+      await AuditLog.create({
+        action: 'DEVICE_REGISTRATION_REJECTED_ALREADY_BOUND',
+        performedBy: req.user._id,
+        targetStudentId: student._id,
+        details: {
+          deviceIdentifier,
+          alreadyBoundTo: otherInfo,
+        },
+        ipAddress: req.ip || '',
+        userAgent: userAgent || req.headers['user-agent'] || '',
+        status: 'WARNING',
+      });
+
+      return res.status(403).json({
+        success: false,
+        message: `Anti-Proxy Security: This device is already registered to ${otherInfo}. A physical device cannot be shared between students. Each student must use their own phone.`,
+      });
+    }
+
     // Register new device
     const newDevice = await Device.create({
       studentId: student._id,
@@ -82,6 +111,13 @@ export const registerDevice = async (req, res) => {
       device: newDevice,
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(403).json({
+        success: false,
+        message: 'Anti-Proxy Security: This device is already registered to another student. One device cannot be shared between multiple accounts.',
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Failed to register device',

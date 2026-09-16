@@ -11,6 +11,7 @@ const deviceSchema = new mongoose.Schema(
     deviceIdentifier: {
       type: String,
       required: true,
+      unique: true, // Strictly 1 student per physical device - prevents proxy sharing
       index: true,
       trim: true,
     },
