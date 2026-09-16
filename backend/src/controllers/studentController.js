@@ -4,6 +4,16 @@ import { Device } from '../models/Device.js';
 import { Attendance } from '../models/Attendance.js';
 import { AuditLog } from '../models/AuditLog.js';
 
+export const deriveStudentUsername = (name) => {
+  let cleanName = (name || '').trim();
+  if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
+    cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
+  }
+  cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
+  return cleanName.trim();
+};
+
 export const deriveStudentPassword = (name, department) => {
   let cleanName = (name || '').trim();
   if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
@@ -122,7 +132,7 @@ export const createStudent = async (req, res) => {
     const studentPassword = password || deriveStudentPassword(name, department || 'CSE');
     const user = await User.create({
       name,
-      username: name,
+      username: deriveStudentUsername(name),
       email: email.toLowerCase().trim(),
       password: studentPassword,
       role: 'STUDENT',
@@ -304,7 +314,7 @@ export const importStudents = async (req, res) => {
           const studentPassword = item.password || deriveStudentPassword(name, department);
           user = await User.create({
             name,
-            username: name,
+            username: deriveStudentUsername(name),
             email: fallbackEmail,
             password: studentPassword,
             role: 'STUDENT',

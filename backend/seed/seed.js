@@ -12,6 +12,19 @@ import { AuditLog } from '../src/models/AuditLog.js';
 
 dotenv.config();
 
+// Helper to derive student username: name without initial
+export const deriveStudentUsername = (name) => {
+  let cleanName = (name || '').trim();
+  // If starts with single letter initial like "S Hari" -> "Hari"
+  if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
+    cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
+  }
+  // Remove trailing initials: e.g. " D", " V P", " B.S", " VM", " R K", " K N", " S N"
+  cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
+  return cleanName.trim();
+};
+
 // Helper to derive student password: name (in lowercase without initial) + Department (in uppercase)
 export const deriveStudentPassword = (name, department) => {
   let cleanName = (name || '').trim();
@@ -144,7 +157,7 @@ export const seedDatabase = async () => {
       const gender = template.gender;
       const year = template.year;
       const department = template.department;
-      const username = name;
+      const username = deriveStudentUsername(name);
       const password = deriveStudentPassword(name, department);
       const email = `student${String(i).padStart(2, '0')}@college.edu`;
       const phone = `+91 98765 ${String(43200 + i).padStart(5, '0')}`;

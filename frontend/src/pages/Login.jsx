@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bus, Lock, Mail, AlertCircle, ShieldCheck, UserCheck, Smartphone } from 'lucide-react';
+import { Bus, Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -32,11 +32,6 @@ export const Login = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemoSelect = (demoEmail, demoPass) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
   };
 
   return (
@@ -77,7 +72,7 @@ export const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. Magila D, Kowshiek R, or admin@college.edu"
+                  placeholder="e.g. Magila, Kowshiek, or admin@college.edu"
                   className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
@@ -98,12 +93,12 @@ export const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="e.g. magilaAIDS, kowshiekIT"
+                  placeholder="••••••••"
                   className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                <span className="font-semibold text-slate-700">Student Password format:</span> name without initial (lowercase) + Department (uppercase), e.g. <span className="font-semibold text-indigo-600">magilaAIDS</span>, <span className="font-semibold text-indigo-600">kowshiekIT</span>.
+                <span className="font-semibold text-slate-700">Student Password:</span> name without initial (lowercase) + Department (uppercase), e.g. <span className="font-semibold text-indigo-600">magilaAIDS</span>, <span className="font-semibold text-indigo-600">kowshiekIT</span>.
               </p>
             </div>
 
@@ -119,47 +114,6 @@ export const Login = () => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Fill Buttons */}
-          <div className="mt-6 pt-6 border-t border-slate-100">
-            <p className="text-xs font-semibold text-slate-500 text-center mb-3">
-              Quick Test Credentials (One-Click Fill)
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleDemoSelect('admin@college.edu', 'Admin@123')}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-                <span>Admin</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoSelect('driver@college.edu', 'Driver@123')}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-amber-50 hover:text-amber-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
-              >
-                <Bus className="w-3.5 h-3.5 text-amber-600" />
-                <span>Driver</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoSelect('Magila D', 'magilaAIDS')}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-pink-50 hover:text-pink-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-pink-600" />
-                <span>Magila D (Girl - AIDS)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDemoSelect('Kowshiek R', 'kowshiekIT')}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Kowshiek R (Boy - IT)</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Security badges */}

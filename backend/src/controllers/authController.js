@@ -26,7 +26,7 @@ export const login = async (req, res) => {
     const escapedIdentifier = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     // 1. Check direct match on email, username, or name (case-insensitive)
-    let user = await User.findOne({
+    let candidateUsers = await User.find({
       $or: [
         { email: identifier.toLowerCase() },
         { username: new RegExp(`^${escapedIdentifier}$`, 'i') },
@@ -35,28 +35,39 @@ export const login = async (req, res) => {
     });
 
     // 2. If not found, check Student collection by rollNumber, studentId, or student name
-    if (!user) {
-      const student = await Student.findOne({
+    if (candidateUsers.length === 0) {
+      const students = await Student.find({
         $or: [
           { rollNumber: identifier.toUpperCase() },
           { studentId: identifier.toUpperCase() },
           { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
         ],
       });
-      if (student) {
-        user = await User.findById(student.userId);
+      if (students.length > 0) {
+        candidateUsers = await User.find({
+          _id: { $in: students.map((s) => s.userId) },
+        });
       }
     }
 
-    if (!user) {
+    if (candidateUsers.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'Invalid username/email or password.',
       });
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    // Authenticate candidate matching password
+    let user = null;
+    for (const candidate of candidateUsers) {
+      const isMatch = await candidate.comparePassword(password);
+      if (isMatch) {
+        user = candidate;
+        break;
+      }
+    }
+
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid username/email or password.',
