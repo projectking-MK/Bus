@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
 import { QRScanner } from '../../components/QRScanner';
-import { getCurrentPosition } from '../../utils/geolocation';
+import { getCurrentPosition, isSecureOrigin } from '../../utils/geolocation';
 import {
   QrCode,
   MapPin,
@@ -26,6 +26,11 @@ export const ScanAttendance = () => {
   const [verificationResult, setVerificationResult] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
 
+  // Proactive Location Permission state
+  const [locationStatus, setLocationStatus] = useState('prompt'); // 'prompt' | 'acquiring' | 'ready' | 'denied' | 'insecure'
+  const [cachedPosition, setCachedPosition] = useState(null);
+  const [locationMessage, setLocationMessage] = useState('');
+
   // Status checks for visual progression
   const [checks, setChecks] = useState({
     device: { status: 'pending', label: 'Registered Hardware Device' },
@@ -33,6 +38,34 @@ export const ScanAttendance = () => {
     qr: { status: 'pending', label: 'Dynamic QR Token' },
     gps: { status: 'pending', label: 'GPS Geofence & Accuracy' },
   });
+
+  // Proactively request / prompt for location
+  const requestLocation = async () => {
+    if (!isSecureOrigin()) {
+      setLocationStatus('insecure');
+      setLocationMessage('Browser blocks GPS on HTTP. Switch to HTTPS below.');
+      return;
+    }
+
+    setLocationStatus('acquiring');
+    setLocationMessage('Requesting GPS location permission...');
+
+    try {
+      const pos = await getCurrentPosition({ timeout: 10000 });
+      setCachedPosition(pos);
+      setLocationStatus('ready');
+      setLocationMessage(`GPS Active (±${pos.accuracy}m)`);
+      setErrorDetails(null);
+    } catch (err) {
+      setLocationStatus('denied');
+      setLocationMessage(err.message || 'Location permission denied.');
+    }
+  };
+
+  // Ask for location immediately when student opens the Scan page
+  useEffect(() => {
+    requestLocation();
+  }, []);
 
   const handleScanSuccess = async (scannedToken) => {
     if (submitting || !scanning) return;
@@ -57,18 +90,25 @@ export const ScanAttendance = () => {
         gps: { status: 'checking', label: 'Acquiring high-accuracy GPS coordinates...' },
       }));
 
-      // 2. Obtain GPS coordinates
-      let position;
-      try {
-        position = await getCurrentPosition({ timeout: 15000 });
-      } catch (gpsError) {
-        setChecks((prev) => ({
-          ...prev,
-          gps: { status: 'error', label: gpsError.message },
-        }));
-        setErrorDetails(gpsError.message);
-        setSubmitting(false);
-        return;
+      // 2. Obtain GPS coordinates (use fresh cached position if within 60s, or fetch new)
+      let position = cachedPosition;
+      const isCacheFresh = position && position.timestamp && (Date.now() - position.timestamp < 60000);
+
+      if (!isCacheFresh) {
+        try {
+          position = await getCurrentPosition({ timeout: 15000 });
+          setCachedPosition(position);
+          setLocationStatus('ready');
+        } catch (gpsError) {
+          setChecks((prev) => ({
+            ...prev,
+            gps: { status: 'error', label: gpsError.message },
+          }));
+          setLocationStatus('denied');
+          setErrorDetails(gpsError.message);
+          setSubmitting(false);
+          return;
+        }
       }
 
       setChecks((prev) => ({
@@ -206,6 +246,66 @@ export const ScanAttendance = () => {
         </div>
       ) : (
         <>
+          {/* Proactive Location Permission Banner */}
+          {locationStatus === 'insecure' ? (
+            <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-sm">
+              <div className="flex items-center space-x-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <p className="font-bold">HTTPS Needed for GPS</p>
+                  <p className="text-[11px] text-amber-700">Mobile browsers require HTTPS to prompt for location.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  window.location.href = window.location.href.replace('http:', 'https:');
+                }}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm"
+              >
+                Switch to HTTPS
+              </button>
+            </div>
+          ) : locationStatus === 'ready' && cachedPosition ? (
+            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900 shadow-sm">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span className="font-semibold">GPS Active & Ready</span>
+                <span className="text-[11px] text-emerald-700 font-mono">
+                  (±{cachedPosition.accuracy}m)
+                </span>
+              </div>
+              <button
+                onClick={requestLocation}
+                className="text-[11px] text-emerald-700 hover:underline font-semibold"
+              >
+                Refresh
+              </button>
+            </div>
+          ) : locationStatus === 'acquiring' ? (
+            <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center space-x-2.5 text-xs text-indigo-900 shadow-sm animate-pulse">
+              <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" />
+              <span>Requesting device GPS location permission...</span>
+            </div>
+          ) : (
+            <div className="mb-4 p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between text-xs text-indigo-950 shadow-sm">
+              <div className="flex items-center space-x-2.5">
+                <MapPin className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                <div>
+                  <p className="font-bold">Device Location Required</p>
+                  <p className="text-[11px] text-indigo-700">
+                    {locationMessage || 'Tap to grant location permission in browser.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={requestLocation}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm"
+              >
+                Allow Location
+              </button>
+            </div>
+          )}
+
           {/* Camera Scanner View */}
           <div className="mb-6">
             <QRScanner onScanSuccess={handleScanSuccess} scanning={scanning} />
