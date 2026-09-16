@@ -117,6 +117,7 @@ export const seedDatabase = async () => {
     console.log('[Seed] Creating Admin User...');
     const adminUser = await User.create({
       name: 'Dr. S. Ramanathan (Chief Admin)',
+      username: 'admin',
       email: 'admin@college.edu',
       password: 'Admin@123',
       role: 'ADMIN',
@@ -127,6 +128,7 @@ export const seedDatabase = async () => {
     console.log('[Seed] Creating Bus Driver User...');
     const driverUser = await User.create({
       name: 'Mr. Muthuvel K (Senior Driver)',
+      username: 'driver',
       email: 'driver@college.edu',
       password: 'Driver@123',
       role: 'DRIVER',
