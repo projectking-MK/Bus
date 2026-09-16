@@ -1,6 +1,6 @@
 # Smart Bus Attendance Monitoring System 🚌
 
-A secure, full-stack, anti-proxy attendance monitoring web application for a college bus with **68 registered students**. Students mark attendance using their mobile devices. The system enforces multi-layered server-side verification to prevent proxy marking: student account authentication, persistent hardware device fingerprint binding, dynamic 25-second rotating QR tokens, and real-time GPS geofencing via the Haversine distance algorithm against live bus coordinates.
+A secure, full-stack, anti-proxy attendance monitoring web application for a college bus with **55 registered students**. Students mark attendance using their mobile devices. The system enforces multi-layered server-side verification to prevent proxy marking: student account authentication, persistent hardware device fingerprint binding, dynamic 25-second rotating QR tokens, and real-time GPS geofencing via the Haversine distance algorithm against live bus coordinates.
 
 ---
 
@@ -8,17 +8,19 @@ A secure, full-stack, anti-proxy attendance monitoring web application for a col
 
 1. [System Overview & Architecture](#-system-overview--architecture)
 2. [Key Anti-Proxy Features](#-key-anti-proxy-features)
-3. [Technology Stack](#-technology-stack)
-4. [Project Structure](#-project-structure)
-5. [Demo Accounts & Credentials](#-demo-accounts--credentials)
-6. [Local Development Setup](#-local-development-setup)
-7. [Database Seeding (68 Students)](#-database-seeding-68-students)
-8. [Automated Testing](#-automated-testing)
-9. [MongoDB Atlas Setup](#-mongodb-atlas-setup)
-10. [Production Deployment Guide](#-production-deployment-guide)
+3. [Excel Attendance Report (.xlsx)](#-excel-attendance-report-xlsx)
+4. [Feeding Student Data (Import Tool)](#-feeding-student-data-import-tool)
+5. [Technology Stack](#-technology-stack)
+6. [Project Structure](#-project-structure)
+7. [Demo Accounts & Credentials](#-demo-accounts--credentials)
+8. [Local Development Setup](#-local-development-setup)
+9. [Database Seeding (55 Students)](#-database-seeding-55-students)
+10. [Automated Testing](#-automated-testing)
+11. [MongoDB Atlas Setup](#-mongodb-atlas-setup)
+12. [Production Deployment Guide](#-production-deployment-guide)
     - [Backend on Render](#backend-deployment-render)
     - [Frontend on Vercel](#frontend-deployment-vercel)
-11. [Troubleshooting & FAQs](#-troubleshooting--faqs)
+13. [Troubleshooting & FAQs](#-troubleshooting--faqs)
 
 ---
 
@@ -43,15 +45,69 @@ A secure, full-stack, anti-proxy attendance monitoring web application for a col
                                               v
                                   +-----------------------+
                                   | Database (Atlas/Local)|
-                                  | 68 Students, Devices, |
+                                  | 55 Students, Devices, |
                                   | Trips, QR & Audits    |
                                   +-----------------------+
 ```
 
 ### Multi-Role System
-1. **ADMIN**: Roster management for all 68 students, reset device binding, configure geofence radius & route center coordinates, view real-time audit logs, and export verified attendance records as CSV.
-2. **BUS DRIVER**: Start/stop bus trip, stream live bus GPS coordinates, project dynamic QR code that automatically rotates every 25 seconds with live countdown progress, and observe real-time passenger counts (present vs absent). Drivers cannot falsify student attendance.
+1. **ADMIN**: Roster management for all 55 students, feed/import new student data, reset device binding, configure geofence radius & route center coordinates, view real-time audit logs, and export verified attendance records as **Excel (`.xlsx`)** or CSV.
+2. **BUS DRIVER**: Start/stop bus trip, stream live bus GPS coordinates, project dynamic QR code that automatically rotates every 25 seconds with live countdown progress, and observe real-time passenger counts (present vs absent out of 55). Drivers cannot falsify student attendance.
 3. **STUDENT**: Log in, bind hardware device identifier on first login, scan dynamic bus QR via device camera, supply high-accuracy GPS coordinates, view personal attendance history and attendance percentage.
+
+---
+
+## 📊 Excel Attendance Report (.xlsx)
+
+The system features an automated **Excel export generator** (`/api/admin/export-excel` powered by `exceljs`), styled and formatted for institutional attendance audits:
+
+1. **Sheet 1: Summary & Absentee Analysis**:
+   - **Executive KPI Cards**: Total Capacity (55), Total Present, Total Absent, Attendance Rate.
+   - **Gender-Disaggregated Present Counts**: Number of **Boys Present** and number of **Girls Present**.
+   - **Absent Boys Table**: Explicit list of every absent boy with **Student Name**, **Academic Year** (e.g., 2nd Year, 3rd Year), Roll Number, and Department.
+   - **Absent Girls Table**: Explicit list of every absent girl with **Student Name**, **Academic Year**, Roll Number, and Department.
+2. **Sheet 2: Detailed Roster (All 55 Students)**:
+   - Full student registry with Roll No, Name, Gender (`Boy` / `Girl`), Academic Year, Department, Status (`PRESENT` / `ABSENT`), Verification Timestamp, Distance from Bus (m), GPS Accuracy (m), and Device Fingerprint.
+
+You can download this report anytime with a single click from the **Admin Dashboard** or **Attendance Logs** page.
+
+---
+
+## 📥 Feeding Student Data (Import Tool)
+
+You can easily feed your custom student data at any time using any of the following methods:
+
+### Method 1: Web UI (Zero Code)
+1. Log into the Admin Dashboard (`admin@college.edu` / `Admin@123`).
+2. Go to **Students (55)** in the navigation.
+3. Click the **Feed / Import Students** button at the top right.
+4. Download the sample CSV template with one click.
+5. Upload your `.csv` file or paste raw CSV text directly into the modal and click **Import Students**.
+
+### Method 2: REST API (`POST /api/students/import`)
+Send a `POST` request with your admin JWT token and an array of student records or a CSV string:
+```json
+{
+  "students": [
+    {
+      "rollNumber": "24CS001",
+      "name": "Kowshiek R",
+      "email": "kowshiek@college.edu",
+      "gender": "Male",
+      "academicYear": "3rd Year",
+      "department": "Computer Science",
+      "password": "Student@123"
+    }
+  ]
+}
+```
+
+### Method 3: Seed Script
+Edit `backend/seed/seed.js` with your custom student records and run:
+```bash
+cd backend
+npm run seed
+```
 
 ---
 
@@ -80,6 +136,7 @@ The backend rejects attendance submissions that do not pass **all 14 validation 
 - **Backend**:
   - Node.js & Express.js
   - Mongoose ODM & MongoDB
+  - `exceljs` (Formatted, styled multi-sheet Excel spreadsheet generation)
   - JSON Web Tokens (`jsonwebtoken`)
   - `bcryptjs` password hashing
   - `express-rate-limit` DDoS & submission spam protection
@@ -100,9 +157,9 @@ smart-bus-attendance/
 │   │   │   └── db.js                 # MongoDB connection & Memory Server fallback
 │   │   ├── models/
 │   │   │   ├── User.js               # Auth credentials (Admin, Driver, Student)
-│   │   │   ├── Student.js            # 68 student records, roll numbers, stats
+│   │   │   ├── Student.js            # 55 student records, gender, year, stats
 │   │   │   ├── Device.js             # Device binding & hardware fingerprint
-│   │   │   ├── Bus.js                # Bus metadata, default geofence & route
+│   │   │   ├── Bus.js                # Bus metadata (capacity 55), geofence
 │   │   │   ├── BusTrip.js            # Live trip status, current coordinates
 │   │   │   ├── QRCode.js             # Dynamic rotating QR tokens with TTL
 │   │   │   ├── Attendance.js         # Verified attendance records & coordinates
@@ -112,12 +169,12 @@ smart-bus-attendance/
 │   │   │   └── rateLimiter.js        # DDoS & brute-force attendance protection
 │   │   ├── controllers/
 │   │   │   ├── authController.js     # Login & profile retrieval
-│   │   │   ├── studentController.js  # CRUD & stats for 68 students
+│   │   │   ├── studentController.js  # CRUD, bulk import & stats for 55 students
 │   │   │   ├── deviceController.js   # Device registration, matching & admin reset
 │   │   │   ├── tripController.js     # Start/stop trip, driver location updates
 │   │   │   ├── qrController.js       # Dynamic QR token generation & rotation
 │   │   │   ├── attendanceController.js # 14-step anti-proxy attendance validation
-│   │   │   └── adminController.js    # Dashboard metrics, CSV export, settings
+│   │   │   └── adminController.js    # Dashboard metrics, Excel export, settings
 │   │   ├── routes/
 │   │   │   ├── authRoutes.js
 │   │   │   ├── studentRoutes.js
@@ -128,12 +185,13 @@ smart-bus-attendance/
 │   │   │   └── adminRoutes.js
 │   │   ├── utils/
 │   │   │   ├── geofence.js           # Haversine distance calculator
+│   │   │   ├── excelExporter.js      # Excel (.xlsx) generator with gender KPI & absent roster
 │   │   │   └── csvExporter.js        # Attendance CSV generation
 │   │   ├── server.js                 # Express server & API routes
 │   │   └── tests/
-│   │       └── attendance.test.js    # 12+ security test suites
+│   │       └── attendance.test.js    # 13 security & Excel test suites
 │   ├── seed/
-│   │   └── seed.js                   # Seeds Admin, Driver, Bus, and 68 Students
+│   │   └── seed.js                   # Seeds Admin, Driver, Bus, and 55 Students (30 Boys, 25 Girls)
 │   ├── render.yaml                   # Render deployment blueprint
 │   ├── .env.example
 │   └── package.json
@@ -153,9 +211,9 @@ smart-bus-attendance/
 │   │   ├── pages/
 │   │   │   ├── Login.jsx             # Unified sleek login with 1-click demo accounts
 │   │   │   ├── admin/
-│   │   │   │   ├── AdminDashboard.jsx # Summary cards, active trip status, live counts
-│   │   │   │   ├── StudentList.jsx    # Complete table of 68 students with device reset
-│   │   │   │   ├── AttendanceLog.jsx  # Detailed logs with GPS, device ID, CSV export
+│   │   │   │   ├── AdminDashboard.jsx # Summary cards, gender KPIs, Excel export
+│   │   │   │   ├── StudentList.jsx    # Table of 55 students with device reset & bulk feed modal
+│   │   │   │   ├── AttendanceLog.jsx  # Detailed logs with gender badge, Excel export
 │   │   │   │   └── TripConfig.jsx     # Geofence radius & route center setup
 │   │   │   ├── driver/
 │   │   │   │   └── DriverDashboard.jsx# Trip controller, large QR, passenger counts
@@ -184,15 +242,15 @@ The system includes pre-configured demo accounts for instant testing:
 
 | Role | Email | Password | Details |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@college.edu` | `Admin@123` | Chief Administrator (Full access) |
-| **Driver** | `driver@college.edu` | `Driver@123` | Senior Driver (Bus #BUS-01 console) |
-| **Student 1** | `student01@college.edu` | `Student@123` | Roll No: `23CS001` (Aarav Sharma) |
-| **Student 2** | `student02@college.edu` | `Student@123` | Roll No: `23CS002` (Aditi Rao) |
-| **Student 3** | `student03@college.edu` | `Student@123` | Roll No: `23CS003` (Akash Patel) |
+| **Admin** | `admin@college.edu` | `Admin@123` | Chief Administrator (Full access, Excel export, Student Feed) |
+| **Driver** | `driver@college.edu` | `Driver@123` | Senior Driver (Bus #BUS-01 console, 55 capacity) |
+| **Student 1 (Boy)** | `student01@college.edu` | `Student@123` | Roll No: `23CS001` (Aarav Sharma, 3rd Year) |
+| **Student 2 (Girl)** | `student02@college.edu` | `Student@123` | Roll No: `23CS002` (Aditi Rao, 2nd Year) |
+| **Student 3 (Boy)** | `student03@college.edu` | `Student@123` | Roll No: `23CS003` (Akash Patel, 4th Year) |
 | ... | ... | ... | ... |
-| **Student 68** | `student68@college.edu` | `Student@123` | Roll No: `23CS068` (Vikram Joshi) |
+| **Student 55 (Girl)** | `student55@college.edu` | `Student@123` | Roll No: `23CS055` (Yamini Verma, 1st Year) |
 
-> 💡 **Tip**: On the Login screen, click any of the demo shortcut buttons (**Admin**, **Driver**, **Student 01**, **Student 02**) to populate credentials instantly.
+> 💡 **Tip**: On the Login screen, click any of the demo shortcut buttons (**Admin**, **Driver**, **Student 01 (Boy)**, **Student 02 (Girl)**) to populate credentials instantly.
 
 ---
 
@@ -206,7 +264,7 @@ The system includes pre-configured demo accounts for instant testing:
 ```bash
 cd backend
 npm install
-npm run seed     # Seeds 1 Admin, 1 Driver, 1 Bus, and 68 Students
+npm run seed     # Seeds 1 Admin, 1 Driver, 1 Bus (55 cap), and 55 Students (30 Boys, 25 Girls)
 npm run dev      # Runs backend at http://localhost:5000
 ```
 > **Note on MongoDB**: If you have a local MongoDB daemon or MongoDB Atlas URI, specify it in `backend/.env`. If you do not have MongoDB installed locally, the backend automatically boots a zero-config In-Memory MongoDB server during development!
@@ -224,7 +282,7 @@ Open `http://localhost:5173` in your browser.
 
 ## 🧪 Automated Testing
 
-Run the automated test suite to verify the security and anti-proxy rules:
+Run the automated test suite to verify the security, anti-proxy rules, and Excel export:
 ```bash
 cd backend
 npm test
@@ -242,7 +300,8 @@ npm test
 9. **Anti-Proxy (Low Accuracy)**: Blocks coarse location attempts (>100m GPS error).
 10. **Role Enforcement**: Prevents drivers/admins from marking student attendance.
 11. **Trip Stop**: Successfully closes attendance and recalculates attendance percentages.
-
+12. **Audit Logging**: Verifies logging of device resets and administrative events.
+13. **Excel (.xlsx) Export Verification**: Confirms generation of valid Excel binary spreadsheet with boys/girls present metrics, absent boys with name and year, and absent girls with name and year.
 ---
 
 ## ☁️ MongoDB Atlas Setup
@@ -283,7 +342,7 @@ For production deployment:
 6. Click **Create Web Service**.
 7. Once deployed, verify health check at:
    `https://your-backend.onrender.com/api/health` -> `{"status":"ok"}`
-8. Seed the 68 students on Render: Under Render service -> **Shell**, run:
+8. Seed the 55 students on Render: Under Render service -> **Shell**, run:
    ```bash
    npm run seed
    ```
@@ -309,6 +368,6 @@ For production deployment:
 - **GPS Accuracy Error**:
   Ensure the device's location service is set to "High Accuracy" (GPS + WiFi). Cellular-only location in low-reception areas may exceed the 100m threshold.
 - **Device Mismatch Error**:
-  If a student switches to a new phone, the Admin must log in, navigate to **Students (68)**, and click the **Reset Device** icon for that student.
+  If a student switches to a new phone, the Admin must log in, navigate to **Students (55)**, and click the **Reset Device** icon for that student.
 - **CORS Errors**:
   Ensure `CLIENT_URL` in the backend environment variables matches your frontend domain (e.g., `https://smart-bus-attendance.vercel.app`).

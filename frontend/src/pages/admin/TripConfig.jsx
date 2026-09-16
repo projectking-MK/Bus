@@ -182,7 +182,7 @@ export const TripConfig = () => {
             </div>
             <div>
               <span className="text-xs text-slate-500">Total Capacity</span>
-              <p className="text-base font-bold text-slate-900 font-mono">68 Students</p>
+              <p className="text-base font-bold text-slate-900 font-mono">{bus?.capacity || 55} Students</p>
             </div>
             <div>
               <span className="text-xs text-slate-500">Current Radius</span>

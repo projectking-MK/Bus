@@ -53,6 +53,10 @@ export const AttendanceLog = () => {
       : ''
   }`;
 
+  const excelDownloadUrl = `${import.meta.env.VITE_API_URL || ''}/api/admin/export-excel${
+    dateFilter ? `?date=${encodeURIComponent(dateFilter)}` : ''
+  }`;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -65,22 +69,29 @@ export const AttendanceLog = () => {
           </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2.5">
           <button
             onClick={fetchLogs}
             disabled={loading}
-            className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-medium transition shadow-sm flex items-center space-x-2"
+            className="px-3 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-medium transition shadow-sm flex items-center space-x-1.5"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
           <a
-            href={csvDownloadUrl}
+            href={excelDownloadUrl}
             download
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition shadow-sm flex items-center space-x-2"
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-1.5"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Export CSV</span>
+            <span>Export Excel (.xlsx)</span>
+          </a>
+          <a
+            href={csvDownloadUrl}
+            download
+            className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-medium transition flex items-center space-x-1.5"
+          >
+            <span>CSV</span>
           </a>
         </div>
       </div>
@@ -130,6 +141,7 @@ export const AttendanceLog = () => {
               <tr>
                 <th className="py-3.5 px-6">Roll No</th>
                 <th className="py-3.5 px-6">Student Name</th>
+                <th className="py-3.5 px-6">Gender</th>
                 <th className="py-3.5 px-6">Status</th>
                 <th className="py-3.5 px-6">Marked At</th>
                 <th className="py-3.5 px-6">GPS Distance</th>
@@ -140,14 +152,14 @@ export const AttendanceLog = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-400">
+                  <td colSpan="8" className="py-12 text-center text-slate-400">
                     <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                     Loading attendance records...
                   </td>
                 </tr>
               ) : records.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-slate-400">
+                  <td colSpan="8" className="py-12 text-center text-slate-400">
                     No attendance records match the selected criteria.
                   </td>
                 </tr>
@@ -159,7 +171,18 @@ export const AttendanceLog = () => {
                     </td>
                     <td className="py-3.5 px-6">
                       <div className="font-semibold text-slate-900">{r.studentId?.name || 'Unknown'}</div>
-                      <div className="text-[11px] text-slate-400">{r.studentId?.department || ''}</div>
+                      <div className="text-[11px] text-slate-400">{r.studentId?.department || ''} • {r.studentId?.year || ''}</div>
+                    </td>
+                    <td className="py-3.5 px-6">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          r.studentId?.gender === 'Female'
+                            ? 'bg-pink-100 text-pink-800 border border-pink-200'
+                            : 'bg-blue-100 text-blue-800 border border-blue-200'
+                        }`}
+                      >
+                        {r.studentId?.gender === 'Female' ? 'Girl' : 'Boy'}
+                      </span>
                     </td>
                     <td className="py-3.5 px-6">
                       <StatusBadge status={r.status} />

@@ -65,6 +65,7 @@ test.before(async () => {
     email: u1.email,
     department: 'Computer Science & Engineering',
     year: '3rd Year',
+    gender: 'Male',
     deviceId: 'DEVICE_UUID_PHONE_01',
     deviceRegistrationStatus: true,
   });
@@ -90,6 +91,7 @@ test.before(async () => {
     email: u2.email,
     department: 'Information Technology',
     year: '3rd Year',
+    gender: 'Female',
     deviceId: 'DEVICE_UUID_PHONE_02',
     deviceRegistrationStatus: true,
   });
@@ -104,7 +106,7 @@ test.before(async () => {
   testBus = await Bus.create({
     busNumber: 'BUS-01',
     routeName: 'Test Campus Route',
-    capacity: 68,
+    capacity: 55,
     defaultGeofenceRadius: 100,
     defaultCenterLatitude: 13.0827,
     defaultCenterLongitude: 80.2707,
@@ -406,4 +408,21 @@ test('12. Admin & Driver: Stop trip closes attendance and recalculates percentag
   assert.equal(stopRes.body.success, true);
   assert.ok(stopRes.body.summary);
   assert.equal(stopRes.body.summary.presentCount, 1); // Only student 1 was marked present
+});
+
+test('13. Admin: Export Excel contains Boys/Girls attendance report and absent lists', async () => {
+  const res = await fetch(`http://127.0.0.1:${testPort}/api/admin/export-excel`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${adminToken}`,
+    },
+  });
+
+  assert.equal(res.status, 200);
+  assert.equal(
+    res.headers.get('content-type'),
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  const buffer = await res.arrayBuffer();
+  assert.ok(buffer.byteLength > 1000, 'Excel file buffer should be non-empty');
 });

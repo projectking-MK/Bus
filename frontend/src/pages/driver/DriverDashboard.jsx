@@ -22,7 +22,7 @@ import {
 export const DriverDashboard = () => {
   const { user } = useAuth();
   const [activeTrip, setActiveTrip] = useState(null);
-  const [stats, setStats] = useState({ totalStudents: 68, presentCount: 0, absentCount: 68 });
+  const [stats, setStats] = useState({ totalStudents: 55, presentCount: 0, absentCount: 55 });
   const [attendees, setAttendees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,7 +39,7 @@ export const DriverDashboard = () => {
       if (res.data.success) {
         if (res.data.active && res.data.trip) {
           setActiveTrip(res.data.trip);
-          setStats(res.data.stats || { totalStudents: 68, presentCount: 0, absentCount: 68 });
+          setStats(res.data.stats || { totalStudents: 55, presentCount: 0, absentCount: 55 });
           // Also fetch attendees
           fetchAttendees();
         } else {
@@ -299,7 +299,7 @@ export const DriverDashboard = () => {
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden h-full flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Live Passengers ({stats.presentCount}/68)</h3>
+                <h3 className="text-base font-bold text-slate-900">Live Passengers ({stats.presentCount}/{stats.totalStudents || 55})</h3>
                 <p className="text-xs text-slate-500">Students scanned on this active trip</p>
               </div>
               <button

@@ -50,7 +50,7 @@ export const Login = () => {
           Smart Bus Attendance
         </h2>
         <p className="mt-1 text-sm text-indigo-200">
-          College Route #04 • 68 Registered Students System
+          College Route #04 • 55 Registered Students System
         </p>
       </div>
 
@@ -143,15 +143,15 @@ export const Login = () => {
                 className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
               >
                 <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Student 01</span>
+                <span>Student 01 (Boy)</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleDemoSelect('student02@college.edu', 'Student@123')}
                 className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
               >
-                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Student 02</span>
+                <Smartphone className="w-3.5 h-3.5 text-pink-600" />
+                <span>Student 02 (Girl)</span>
               </button>
             </div>
           </div>

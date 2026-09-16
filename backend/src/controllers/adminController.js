@@ -4,6 +4,7 @@ import { BusTrip } from '../models/BusTrip.js';
 import { Bus } from '../models/Bus.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { convertAttendanceToCSV } from '../utils/csvExporter.js';
+import { generateAttendanceExcelWorkbook } from '../utils/excelExporter.js';
 
 export const getDashboardSummary = async (req, res) => {
   try {
@@ -19,16 +20,45 @@ export const getDashboardSummary = async (req, res) => {
 
     const todayAttendance = await Attendance.find({
       markedAt: { $gte: startOfDay, $lte: endOfDay },
-    });
+    }).populate('studentId', 'name rollNumber gender year department');
 
     const presentToday = todayAttendance.filter((a) => a.status === 'PRESENT').length;
     const lateToday = todayAttendance.filter((a) => a.status === 'LATE').length;
     const absentToday = Math.max(0, totalStudents - (presentToday + lateToday));
 
-    // Calculate aggregate attendance percentage across all 68 students
-    const students = await Student.find({}, 'attendancePercentage');
-    const avgAttendance = students.length > 0
-      ? Math.round(students.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / students.length)
+    // Gender breakdown for today
+    const presentStudentIds = new Set();
+    let boysPresent = 0;
+    let girlsPresent = 0;
+
+    todayAttendance.forEach((att) => {
+      if (att.status === 'PRESENT' || att.status === 'LATE') {
+        const s = att.studentId;
+        if (s) {
+          presentStudentIds.add(s._id.toString());
+          if ((s.gender || 'Male').toLowerCase() === 'male') {
+            boysPresent++;
+          } else {
+            girlsPresent++;
+          }
+        }
+      }
+    });
+
+    const allStudents = await Student.find({}, 'gender attendancePercentage');
+    let totalBoys = 0;
+    let totalGirls = 0;
+    allStudents.forEach((s) => {
+      if ((s.gender || 'Male').toLowerCase() === 'male') totalBoys++;
+      else totalGirls++;
+    });
+
+    const boysAbsent = Math.max(0, totalBoys - boysPresent);
+    const girlsAbsent = Math.max(0, totalGirls - girlsPresent);
+
+    // Calculate aggregate attendance percentage across students
+    const avgAttendance = allStudents.length > 0
+      ? Math.round(allStudents.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / allStudents.length)
       : 0;
 
     // Active trip status
@@ -46,7 +76,7 @@ export const getDashboardSummary = async (req, res) => {
 
     // Recent 10 attendance records
     const recentActivity = await Attendance.find()
-      .populate('studentId', 'rollNumber name department')
+      .populate('studentId', 'rollNumber name department gender year')
       .populate('tripId', 'tripId')
       .sort({ markedAt: -1 })
       .limit(10);
@@ -55,6 +85,12 @@ export const getDashboardSummary = async (req, res) => {
       success: true,
       stats: {
         totalStudents,
+        totalBoys,
+        totalGirls,
+        boysPresent,
+        girlsPresent,
+        boysAbsent,
+        girlsAbsent,
         activeStudents,
         registeredDevices,
         presentToday,
@@ -165,6 +201,79 @@ export const exportAttendanceCSV = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to export attendance CSV',
+      error: error.message,
+    });
+  }
+};
+
+export const exportAttendanceExcel = async (req, res) => {
+  try {
+    const { date, tripId } = req.query;
+    const filter = {};
+
+    if (tripId) filter.tripId = tripId;
+
+    let selectedDate = new Date();
+    if (date) {
+      selectedDate = new Date(date);
+    }
+    const startOfDay = new Date(selectedDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(selectedDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    filter.markedAt = { $gte: startOfDay, $lte: endOfDay };
+
+    // 1. Fetch all students enrolled (55 students)
+    const allStudents = await Student.find({ accountStatus: 'ACTIVE' }).sort({ rollNumber: 1 });
+
+    // 2. Fetch marked attendance records for this period
+    const attendanceRecords = await Attendance.find(filter)
+      .populate('studentId', 'rollNumber name department year gender phone')
+      .populate('tripId', 'tripId status startTime')
+      .sort({ markedAt: -1 });
+
+    // 3. Fetch trip/bus details
+    let trip = null;
+    if (tripId) {
+      trip = await BusTrip.findById(tripId).populate('busId driverId');
+    } else {
+      trip = await BusTrip.findOne({ status: 'ACTIVE' }).populate('busId driverId');
+      if (!trip) {
+        trip = await BusTrip.findOne().sort({ createdAt: -1 }).populate('busId driverId');
+      }
+    }
+
+    const bus = await Bus.findOne({ isActive: true });
+
+    const tripInfo = {
+      tripId: trip?.tripId || 'TRIP-DEMO',
+      busNumber: trip?.busId?.busNumber || bus?.busNumber || 'BUS-01',
+      routeName: trip?.busId?.routeName || bus?.routeName || 'Main Campus Route 4',
+      date: selectedDate,
+    };
+
+    const workbook = await generateAttendanceExcelWorkbook({
+      allStudents,
+      attendanceRecords,
+      trip: tripInfo,
+    });
+
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    const filename = `Bus_Attendance_Report_${dateStr}.xlsx`;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('[Excel Export Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export attendance Excel report',
       error: error.message,
     });
   }

@@ -3,6 +3,7 @@ import {
   getDashboardSummary,
   getAttendanceLogs,
   exportAttendanceCSV,
+  exportAttendanceExcel,
   getAuditLogs,
   updateGeofenceSettings,
   getBusSettings,
@@ -17,6 +18,7 @@ router.use(authorize('ADMIN'));
 router.get('/dashboard', getDashboardSummary);
 router.get('/attendance', getAttendanceLogs);
 router.get('/export', exportAttendanceCSV);
+router.get('/export-excel', exportAttendanceExcel);
 router.get('/audit-logs', getAuditLogs);
 router.get('/settings', getBusSettings);
 router.put('/settings', updateGeofenceSettings);

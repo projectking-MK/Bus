@@ -12,28 +12,74 @@ import { AuditLog } from '../src/models/AuditLog.js';
 
 dotenv.config();
 
-const studentNames = [
-  'Aarav Sharma', 'Aditi Rao', 'Akash Patel', 'Ananya Iyer', 'Arjun Menon',
-  'Bhavna Joshi', 'Chetan Verma', 'Deepa Nair', 'Devendra Reddy', 'Divya Sundaram',
-  'Gautam Pillai', 'Gayatri Kapoor', 'Harish Chandra', 'Hemalatha K', 'Ishan Deshmukh',
-  'Janani S', 'Jitendra Das', 'Kalyan Raman', 'Karthik Subramanian', 'Kavitha N',
-  'Kishore Kumar', 'Lakshmi Narayanan', 'Madhavan R', 'Meera Bhatt', 'Manoj Tiwari',
-  'Namrata Sen', 'Naveen Raj', 'Niharika Roy', 'Nirmal Prabhu', 'Pavithra M',
-  'Pradeep Hegde', 'Pranav Anand', 'Preethi V', 'Rahul Mehra', 'Rajeshwari B',
-  'Rakesh Nair', 'Ramesh Krishnan', 'Renu Mathur', 'Rishabh Sinha', 'Riya Mukherjee',
-  'Rohan Gupta', 'Rohini Paul', 'Sachin Tendulkar', 'Sai Prasad', 'Sameer Saxena',
-  'Sandhya V', 'Sanjay Dutt', 'Santhosh Babu', 'Saranya G', 'Shankar Mahadevan',
-  'Shalini Mohan', 'Sharath K', 'Shilpa Shetty', 'Shivakumar V', 'Shruti Haasan',
-  'Siddharth Roy', 'Sneha Reddy', 'Srinivas Raghavan', 'Suresh Raina', 'Swathi Sundar',
-  'Tanvi Jain', 'Tarun Chawla', 'Umesh Yadav', 'Vaishnavi R', 'Varun Dhawan',
-  'Venkatesh Prasad', 'Vignesh Shivan', 'Vikram Joshi'
-];
+// 55 Registered Students Dataset: 30 Boys, 25 Girls with realistic names and academic years
+const initialStudentsDataset = [
+  // 1-10 (6 Boys, 4 Girls)
+  { name: 'Aarav Sharma', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Aditi Rao', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Akash Patel', gender: 'Male', year: '2nd Year', department: 'Electronics & Communication' },
+  { name: 'Ananya Iyer', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Arjun Menon', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
+  { name: 'Bhavna Joshi', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Chetan Verma', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Deepa Nair', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
+  { name: 'Devendra Reddy', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Divya Sundaram', gender: 'Female', year: '4th Year', department: 'Information Technology' },
 
-const departments = [
-  'Computer Science & Engineering',
-  'Information Technology',
-  'Electronics & Communication',
-  'Mechanical Engineering',
+  // 11-20 (5 Boys, 5 Girls)
+  { name: 'Gautam Pillai', gender: 'Male', year: '3rd Year', department: 'Mechanical Engineering' },
+  { name: 'Gayatri Kapoor', gender: 'Female', year: '2nd Year', department: 'Computer Science & Engineering' },
+  { name: 'Harish Chandra', gender: 'Male', year: '3rd Year', department: 'Electronics & Communication' },
+  { name: 'Hemalatha K', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Ishan Deshmukh', gender: 'Male', year: '2nd Year', department: 'Computer Science & Engineering' },
+  { name: 'Janani S', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
+  { name: 'Jitendra Das', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
+  { name: 'Kalyan Raman', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Kavitha N', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Kishore Kumar', gender: 'Male', year: '2nd Year', department: 'Electronics & Communication' },
+
+  // 21-30 (6 Boys, 4 Girls)
+  { name: 'Lakshmi Narayanan', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Madhavan R', gender: 'Male', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Meera Bhatt', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
+  { name: 'Manoj Tiwari', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
+  { name: 'Namrata Sen', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Naveen Raj', gender: 'Male', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Niharika Roy', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
+  { name: 'Nirmal Prabhu', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Pradeep Hegde', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
+  { name: 'Pranav Anand', gender: 'Male', year: '2nd Year', department: 'Computer Science & Engineering' },
+
+  // 31-40 (5 Boys, 5 Girls)
+  { name: 'Pavithra M', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Preethi V', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
+  { name: 'Rahul Mehra', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Rajeshwari B', gender: 'Female', year: '2nd Year', department: 'Information Technology' },
+  { name: 'Rakesh Nair', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
+  { name: 'Ramesh Krishnan', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Renu Mathur', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
+  { name: 'Rishabh Sinha', gender: 'Male', year: '2nd Year', department: 'Information Technology' },
+  { name: 'Riya Mukherjee', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Rohan Gupta', gender: 'Male', year: '3rd Year', department: 'Mechanical Engineering' },
+
+  // 41-50 (5 Boys, 5 Girls)
+  { name: 'Rohini Paul', gender: 'Female', year: '4th Year', department: 'Information Technology' },
+  { name: 'Sachin Tendulkar', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Sai Prasad', gender: 'Male', year: '2nd Year', department: 'Electronics & Communication' },
+  { name: 'Sameer Saxena', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Sandhya V', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Sanjay Dutt', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
+  { name: 'Santhosh Babu', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Saranya G', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
+  { name: 'Shalini Mohan', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Shilpa Shetty', gender: 'Female', year: '4th Year', department: 'Computer Science & Engineering' },
+
+  // 51-55 (3 Boys, 2 Girls) -> Exactly 55 Students (30 Boys, 25 Girls)
+  { name: 'Shankar Mahadevan', gender: 'Male', year: '3rd Year', department: 'Electronics & Communication' },
+  { name: 'Sharath K', gender: 'Male', year: '2nd Year', department: 'Mechanical Engineering' },
+  { name: 'Shruti Haasan', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
+  { name: 'Siddharth Roy', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
+  { name: 'Sneha Reddy', gender: 'Female', year: '4th Year', department: 'Computer Science & Engineering' },
 ];
 
 export const seedDatabase = async () => {
@@ -71,29 +117,31 @@ export const seedDatabase = async () => {
       isActive: true,
     });
 
-    console.log('[Seed] Creating Bus Vehicle...');
+    console.log('[Seed] Creating Bus Vehicle (Capacity: 55)...');
     const bus = await Bus.create({
       busNumber: 'BUS-01',
       routeName: 'Main Campus Express Route 4 (Tambaram - Campus)',
-      capacity: 68,
+      capacity: 55,
       defaultGeofenceRadius: 100, // 100 meters
       defaultCenterLatitude: 13.0827,
       defaultCenterLongitude: 80.2707,
       isActive: true,
     });
 
-    console.log(`[Seed] Generating 68 Registered Students...`);
+    console.log(`[Seed] Generating 55 Registered Students (30 Boys, 25 Girls)...`);
     const studentUsers = [];
     const students = [];
 
-    for (let i = 1; i <= 68; i++) {
+    for (let i = 1; i <= 55; i++) {
       const padNum = String(i).padStart(3, '0');
       const rollNumber = `23CS${padNum}`;
-      const name = studentNames[i - 1] || `Student Demo ${padNum}`;
+      const template = initialStudentsDataset[i - 1];
+      const name = template.name;
+      const gender = template.gender;
+      const year = template.year;
+      const department = template.department;
       const email = `student${String(i).padStart(2, '0')}@college.edu`;
       const phone = `+91 98765 ${String(43200 + i).padStart(5, '0')}`;
-      const department = departments[(i - 1) % departments.length];
-      const year = '3rd Year';
 
       // Create user auth doc
       const user = await User.create({
@@ -113,6 +161,7 @@ export const seedDatabase = async () => {
         name,
         email,
         phone,
+        gender,
         department,
         year,
         role: 'STUDENT',
@@ -134,23 +183,31 @@ export const seedDatabase = async () => {
       performedBy: adminUser._id,
       details: {
         totalStudentsCreated: students.length,
+        boysCount: students.filter((s) => s.gender === 'Male').length,
+        girlsCount: students.filter((s) => s.gender === 'Female').length,
         busNumber: bus.busNumber,
+        capacity: 55,
       },
       status: 'SUCCESS',
     });
 
+    const boysCount = students.filter((s) => s.gender === 'Male').length;
+    const girlsCount = students.filter((s) => s.gender === 'Female').length;
+
     console.log('====================================================');
-    console.log(' SEED COMPLETED SUCCESSFULLY!');
+    console.log(' SEED COMPLETED SUCCESSFULLY FOR 55 STUDENTS!');
     console.log('====================================================');
     console.log(`Total Students Seeded : ${students.length}`);
-    console.log(`Bus Assigned           : ${bus.busNumber} (${bus.routeName})`);
+    console.log(`  - Number of Boys     : ${boysCount}`);
+    console.log(`  - Number of Girls    : ${girlsCount}`);
+    console.log(`Bus Assigned           : ${bus.busNumber} (Capacity: ${bus.capacity})`);
     console.log('----------------------------------------------------');
     console.log(' DEMO CREDENTIALS:');
     console.log('   ADMIN  : admin@college.edu   / Admin@123');
     console.log('   DRIVER : driver@college.edu  / Driver@123');
-    console.log('   STUDENT 1: student01@college.edu / Student@123 (Roll: 23CS001)');
-    console.log('   STUDENT 2: student02@college.edu / Student@123 (Roll: 23CS002)');
-    console.log('   ... up to student68@college.edu / Student@123 (Roll: 23CS068)');
+    console.log('   STUDENT 1: student01@college.edu / Student@123 (Roll: 23CS001 - Boy)');
+    console.log('   STUDENT 2: student02@college.edu / Student@123 (Roll: 23CS002 - Girl)');
+    console.log('   ... up to student55@college.edu / Student@123 (Roll: 23CS055 - Girl)');
     console.log('====================================================');
 
     return { adminUser, driverUser, bus, students };

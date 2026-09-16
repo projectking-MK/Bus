@@ -16,7 +16,7 @@ const busSchema = new mongoose.Schema(
     capacity: {
       type: Number,
       required: true,
-      default: 68,
+      default: 55,
     },
     defaultGeofenceRadius: {
       type: Number,

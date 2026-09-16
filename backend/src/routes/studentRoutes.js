@@ -5,6 +5,8 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
+  importStudents,
+  getStudentTemplate,
 } from '../controllers/studentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -12,6 +14,8 @@ const router = express.Router();
 
 router.use(protect);
 
+router.get('/template', authorize('ADMIN'), getStudentTemplate);
+router.post('/import', authorize('ADMIN'), importStudents);
 router.get('/', authorize('ADMIN'), getAllStudents);
 router.post('/', authorize('ADMIN'), createStudent);
 router.get('/:id', getStudentById);

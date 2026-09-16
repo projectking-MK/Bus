@@ -79,6 +79,7 @@ export const createStudent = async (req, res) => {
       phone,
       department,
       year,
+      gender,
       password,
     } = req.body;
 
@@ -122,6 +123,7 @@ export const createStudent = async (req, res) => {
       name,
       email: email.toLowerCase().trim(),
       phone: phone || '',
+      gender: gender === 'Female' ? 'Female' : 'Male',
       department: department || 'Computer Science & Engineering',
       year: year || '3rd Year',
     });
@@ -130,7 +132,7 @@ export const createStudent = async (req, res) => {
       action: 'STUDENT_CREATED',
       performedBy: req.user._id,
       targetStudentId: student._id,
-      details: { rollNumber: student.rollNumber, email: student.email },
+      details: { rollNumber: student.rollNumber, email: student.email, gender: student.gender },
       ipAddress: req.ip || '',
     });
 
@@ -150,7 +152,7 @@ export const createStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   try {
-    const { name, phone, department, year, accountStatus } = req.body;
+    const { name, phone, department, year, gender, accountStatus } = req.body;
 
     const student = await Student.findById(req.params.id);
     if (!student) {
@@ -164,6 +166,7 @@ export const updateStudent = async (req, res) => {
     if (phone !== undefined) student.phone = phone;
     if (department) student.department = department;
     if (year) student.year = year;
+    if (gender) student.gender = gender;
     if (accountStatus) student.accountStatus = accountStatus;
 
     await student.save();
@@ -230,4 +233,125 @@ export const deleteStudent = async (req, res) => {
       error: error.message,
     });
   }
+};
+
+/**
+ * Bulk import or update students so the user can feed their 55 students data
+ */
+export const importStudents = async (req, res) => {
+  try {
+    const { students } = req.body;
+
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid array of student records.',
+      });
+    }
+
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    for (const item of students) {
+      const roll = (item.rollNumber || item.RollNumber || item['Roll No'] || '').trim().toUpperCase();
+      const name = (item.name || item.Name || '').trim();
+      const email = (item.email || item.Email || '').trim().toLowerCase();
+      const rawGender = (item.gender || item.Gender || 'Male').trim();
+      const gender = rawGender.toLowerCase().startsWith('f') || rawGender.toLowerCase().includes('girl') ? 'Female' : 'Male';
+      const department = (item.department || item.Department || 'Computer Science & Engineering').trim();
+      const year = (item.year || item.Year || '3rd Year').trim();
+      const phone = (item.phone || item.Phone || '').trim();
+
+      if (!roll || !name) continue;
+
+      const fallbackEmail = email || `${roll.toLowerCase()}@college.edu`;
+
+      // Check if student already exists
+      let student = await Student.findOne({ rollNumber: roll });
+
+      if (student) {
+        student.name = name;
+        student.gender = gender;
+        student.department = department;
+        student.year = year;
+        if (phone) student.phone = phone;
+        await student.save();
+
+        await User.findByIdAndUpdate(student.userId, {
+          name,
+          phone,
+        });
+
+        updatedCount++;
+      } else {
+        // Create new user & student
+        let user = await User.findOne({ email: fallbackEmail });
+        if (!user) {
+          user = await User.create({
+            name,
+            email: fallbackEmail,
+            password: 'Student@123',
+            role: 'STUDENT',
+            phone,
+            isActive: true,
+          });
+        }
+
+        student = await Student.create({
+          userId: user._id,
+          studentId: `STD-${roll}`,
+          rollNumber: roll,
+          name,
+          email: fallbackEmail,
+          phone,
+          gender,
+          department,
+          year,
+          role: 'STUDENT',
+          accountStatus: 'ACTIVE',
+        });
+
+        createdCount++;
+      }
+    }
+
+    await AuditLog.create({
+      action: 'BULK_STUDENTS_IMPORTED',
+      performedBy: req.user._id,
+      details: { createdCount, updatedCount, totalProcessed: students.length },
+      ipAddress: req.ip || '',
+    });
+
+    res.json({
+      success: true,
+      message: `Bulk import completed: ${createdCount} created, ${updatedCount} updated.`,
+      createdCount,
+      updatedCount,
+      totalCount: await Student.countDocuments(),
+    });
+  } catch (error) {
+    console.error('[Import Students Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to import student data',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Downloads a sample CSV template for 55 students
+ */
+export const getStudentTemplate = (req, res) => {
+  const csvHeaders = 'Roll Number,Full Name,Gender (Male/Female),College Email,Phone Number,Department,Academic Year\n';
+  const sampleRows = [
+    '23CS001,Aarav Sharma,Male,student01@college.edu,+91 9876543201,Computer Science & Engineering,3rd Year',
+    '23CS002,Aditi Rao,Female,student02@college.edu,+91 9876543202,Information Technology,3rd Year',
+    '23CS003,Rohan Gupta,Male,student03@college.edu,+91 9876543203,Electronics & Communication,3rd Year',
+    '23CS004,Ananya Iyer,Female,student04@college.edu,+91 9876543204,Computer Science & Engineering,3rd Year',
+  ].join('\n');
+
+  res.header('Content-Type', 'text/csv');
+  res.attachment('students_import_template_55.csv');
+  return res.send(csvHeaders + sampleRows);
 };

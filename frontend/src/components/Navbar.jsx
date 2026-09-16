@@ -60,7 +60,7 @@ export const Navbar = () => {
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  <span>Students (68)</span>
+                  <span>Students (55)</span>
                 </Link>
                 <Link
                   to="/admin/attendance"
