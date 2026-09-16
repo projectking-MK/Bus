@@ -191,9 +191,9 @@ smart-bus-attendance/
 │   │   │   └── csvExporter.js        # Attendance CSV generation
 │   │   ├── server.js                 # Express server & API routes
 │   │   └── tests/
-│   │       └── attendance.test.js    # 13 security & Excel test suites
+│   │       └── attendance.test.js    # 14 security & Excel test suites
 │   ├── seed/
-│   │   └── seed.js                   # Seeds Admin, Driver, Bus, and 55 Students (30 Boys, 25 Girls)
+│   │   └── seed.js                   # Seeds Admin, Driver, Bus, and 55 Students (21 Boys, 34 Girls)
 │   ├── render.yaml                   # Render deployment blueprint
 │   ├── .env.example
 │   └── package.json
@@ -266,7 +266,7 @@ The system includes pre-configured demo accounts for instant testing:
 ```bash
 cd backend
 npm install
-npm run seed     # Seeds 1 Admin, 1 Driver, 1 Bus (55 cap), and 55 Students (30 Boys, 25 Girls)
+npm run seed     # Seeds 1 Admin, 1 Driver, 1 Bus (55 cap), and 55 Students (21 Boys, 34 Girls)
 npm run dev      # Runs backend at http://localhost:5000
 ```
 > **Note on MongoDB**: If you have a local MongoDB daemon or MongoDB Atlas URI, specify it in `backend/.env`. If you do not have MongoDB installed locally, the backend automatically boots a zero-config In-Memory MongoDB server during development!

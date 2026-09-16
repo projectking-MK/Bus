@@ -158,7 +158,7 @@ export const AdminDashboard = () => {
           <div className="flex items-center justify-between text-indigo-900 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">Boys Present</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-200/60 font-semibold text-indigo-800">
-              of {stats.totalBoys || 30} Boys
+              of {stats.totalBoys || 21} Boys
             </span>
           </div>
           <p className="text-2xl font-extrabold text-indigo-700 font-mono">
@@ -171,7 +171,7 @@ export const AdminDashboard = () => {
           <div className="flex items-center justify-between text-pink-900 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">Girls Present</span>
             <span className="text-[11px] px-2 py-0.5 rounded-full bg-pink-200/60 font-semibold text-pink-800">
-              of {stats.totalGirls || 25} Girls
+              of {stats.totalGirls || 34} Girls
             </span>
           </div>
           <p className="text-2xl font-extrabold text-pink-700 font-mono">
@@ -188,7 +188,7 @@ export const AdminDashboard = () => {
             </span>
           </div>
           <p className="text-2xl font-extrabold text-rose-700 font-mono">
-            {stats.boysAbsent !== undefined ? stats.boysAbsent : 30}
+            {stats.boysAbsent !== undefined ? stats.boysAbsent : 21}
           </p>
           <p className="text-[11px] text-rose-600 mt-0.5">Absent boys with Name & Year</p>
         </div>
@@ -201,7 +201,7 @@ export const AdminDashboard = () => {
             </span>
           </div>
           <p className="text-2xl font-extrabold text-amber-700 font-mono">
-            {stats.girlsAbsent !== undefined ? stats.girlsAbsent : 25}
+            {stats.girlsAbsent !== undefined ? stats.girlsAbsent : 34}
           </p>
           <p className="text-[11px] text-amber-600 mt-0.5">Absent girls with Name & Year</p>
         </div>
