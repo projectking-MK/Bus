@@ -18,6 +18,6 @@ services:
       - key: CLIENT_URL
         sync: false
       - key: QR_EXPIRY_SECONDS
-        value: 25
+        value: 180
       - key: DEFAULT_GEOFENCE_RADIUS
         value: 100

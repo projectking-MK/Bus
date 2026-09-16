@@ -12,10 +12,11 @@ export const authLimiter = rateLimit({
   },
 });
 
-// Rate limit for attendance scanning to prevent spoofing or flooding
+// Rate limit for attendance scanning - keyed by student ID or IP, allowing 55+ students to submit concurrently
 export const attendanceLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10, // Max 10 attempts per minute per IP
+  max: 60, // Max 60 attempts per minute per student
+  keyGenerator: (req) => (req.user && req.user._id ? req.user._id.toString() : req.ip),
   standardHeaders: true,
   legacyHeaders: false,
   message: {

@@ -219,7 +219,7 @@ test('3. Bus Trip: Driver starts trip and dynamic QR is generated', async () => 
   activeTrip = res.body.trip;
 });
 
-test('4. Dynamic QR: returns active valid token with countdown', async () => {
+test('4. Dynamic QR: returns active valid token with countdown (180s = 3 mins)', async () => {
   const res = await makeRequest('GET', '/api/qr/current', null, {
     Authorization: `Bearer ${driverToken}`,
   });
@@ -227,7 +227,7 @@ test('4. Dynamic QR: returns active valid token with countdown', async () => {
   assert.equal(res.status, 200);
   assert.ok(res.body.token);
   assert.ok(res.body.remainingSeconds > 0);
-  assert.equal(res.body.totalValiditySeconds, 25);
+  assert.equal(res.body.totalValiditySeconds, 180);
 });
 
 test('5. Valid Attendance: Student 1 scans valid QR inside geofence with registered device', async () => {
@@ -399,7 +399,33 @@ test('11. Security: blocks non-student (Driver/Admin) from marking student atten
   assert.equal(res.status, 403);
 });
 
-test('12. Admin & Driver: Stop trip closes attendance and recalculates percentages', async () => {
+test('12. Concurrent Attendance: Multiple students (Student 2) mark attendance with the SAME 3-minute QR token', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  // Student 2 marks attendance using the same QR token as Student 1
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 12,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+
+  assert.equal(res.status, 201);
+  assert.equal(res.body.success, true);
+  assert.equal(res.body.attendance.status, 'PRESENT');
+  assert.equal(res.body.attendance.rollNumber, '23CS002');
+});
+
+test('13. Admin & Driver: Stop trip closes attendance and recalculates percentages', async () => {
   const stopRes = await makeRequest('POST', '/api/trips/stop', {}, {
     Authorization: `Bearer ${driverToken}`,
   });
@@ -407,10 +433,10 @@ test('12. Admin & Driver: Stop trip closes attendance and recalculates percentag
   assert.equal(stopRes.status, 200);
   assert.equal(stopRes.body.success, true);
   assert.ok(stopRes.body.summary);
-  assert.equal(stopRes.body.summary.presentCount, 1); // Only student 1 was marked present
+  assert.equal(stopRes.body.summary.presentCount, 2); // Both Student 1 (Boy) and Student 2 (Girl) marked present with same QR
 });
 
-test('13. Admin: Export Excel contains Boys/Girls attendance report and absent lists', async () => {
+test('14. Admin: Export Excel contains Boys/Girls attendance report and absent lists', async () => {
   const res = await fetch(`http://127.0.0.1:${testPort}/api/admin/export-excel`, {
     method: 'GET',
     headers: {
