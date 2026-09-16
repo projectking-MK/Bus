@@ -164,7 +164,7 @@ export const Login = () => {
             <span>Hardware Device Binding</span>
           </span>
           <span>•</span>
-          <span>3-Min Dynamic QR</span>
+          <span>20-Min Dynamic QR</span>
           <span>•</span>
           <span>GPS Geofencing</span>
         </div>

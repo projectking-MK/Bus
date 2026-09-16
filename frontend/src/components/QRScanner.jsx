@@ -211,7 +211,7 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
         ) : (
           <form onSubmit={handleManualSubmit} className="w-full bg-slate-50 p-3 rounded-2xl border border-slate-200 mt-1">
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Enter 3-Minute QR Token
+              Enter 20-Minute QR Token
             </label>
             <div className="flex space-x-2">
               <input

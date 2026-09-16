@@ -219,7 +219,7 @@ test('3. Bus Trip: Driver starts trip and dynamic QR is generated', async () => 
   activeTrip = res.body.trip;
 });
 
-test('4. Dynamic QR: returns active valid token with countdown (180s = 3 mins)', async () => {
+test('4. Dynamic QR: returns active valid token with countdown (1200s = 20 mins)', async () => {
   const res = await makeRequest('GET', '/api/qr/current', null, {
     Authorization: `Bearer ${driverToken}`,
   });
@@ -227,7 +227,7 @@ test('4. Dynamic QR: returns active valid token with countdown (180s = 3 mins)',
   assert.equal(res.status, 200);
   assert.ok(res.body.token);
   assert.ok(res.body.remainingSeconds > 0);
-  assert.equal(res.body.totalValiditySeconds, 180);
+  assert.equal(res.body.totalValiditySeconds, 1200);
 });
 
 test('5. Valid Attendance: Student 1 scans valid QR inside geofence with registered device', async () => {
@@ -399,7 +399,7 @@ test('11. Security: blocks non-student (Driver/Admin) from marking student atten
   assert.equal(res.status, 403);
 });
 
-test('12. Concurrent Attendance: Multiple students (Student 2) mark attendance with the SAME 3-minute QR token', async () => {
+test('12. Concurrent Attendance: Multiple students (Student 2) mark attendance with the SAME 20-minute QR token', async () => {
   const qrRes = await makeRequest('GET', '/api/qr/current', null, {
     Authorization: `Bearer ${driverToken}`,
   });

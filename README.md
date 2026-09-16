@@ -52,7 +52,7 @@ A secure, full-stack, anti-proxy attendance monitoring web application for a col
 
 ### Multi-Role System
 1. **ADMIN**: Roster management for all 55 students, feed/import new student data, reset device binding, configure geofence radius & route center coordinates, view real-time audit logs, and export verified attendance records as **Excel (`.xlsx`)** or CSV.
-2. **BUS DRIVER**: Start/stop bus trip, stream live bus GPS coordinates, project dynamic QR code that automatically rotates every **3 minutes (180s)** with live countdown progress, download high-res branded QR images to broadcast to student WhatsApp groups, and observe real-time passenger counts (present vs absent out of 55). Drivers cannot falsify student attendance.
+2. **BUS DRIVER**: Start/stop bus trip, stream live bus GPS coordinates, project dynamic QR code that automatically rotates every **20 minutes (1200s)** with live countdown progress, download high-res branded QR images to broadcast to student WhatsApp groups, and observe real-time passenger counts (present vs absent out of 55). Drivers cannot falsify student attendance.
 3. **STUDENT**: Log in, bind hardware device identifier on first login, scan dynamic bus QR via camera or gallery upload (if received on WhatsApp), supply high-accuracy GPS coordinates, view personal attendance history and attendance percentage.
 
 ---
@@ -115,8 +115,8 @@ npm run seed
 
 The backend rejects attendance submissions that do not pass **all 14 validation criteria**:
 - **Hardware Device Binding**: Each student account is bound to a single physical device fingerprint. If another student attempts to mark attendance from their phone using a friend's credentials, the request is blocked (`403 This account is registered to another device`).
-- **Dynamic 3-Minute (180s) QR Token with Download**: The QR code rotates every 3 minutes. The driver can project it on the bus dashboard or click **"Download QR Image"** to send it directly into the student WhatsApp group.
-- **Concurrent Marking for All 55 Students**: All 55 students can scan and mark attendance simultaneously during the 3-minute validity window. Rate limiters are keyed per student ID, preventing collective throttling.
+- **Dynamic 20-Minute (1200s) QR Token with Download**: The QR code stays active for 20 minutes. The driver can project it on the bus dashboard or click **"Download QR Image"** to send it directly into the student WhatsApp group.
+- **Concurrent Marking for All 55 Students**: All 55 students can scan and mark attendance simultaneously during the 20-minute validity window. Rate limiters are keyed per student ID, preventing collective throttling.
 - **GPS Geofencing (Haversine Formula)**: Strictly enforced at all times. Compares student coordinates directly with the driver's live bus GPS coordinates. Even if a student receives the QR screenshot on WhatsApp at home, attendance is rejected (`400 You are outside the permitted bus area`) because they are outside the 100-meter bus radius!
 - **Gallery/WhatsApp Image Scanner**: Students who receive the QR image on their phone can simply upload it directly from their gallery into the scanner without needing a second screen.
 - **Single-Use Replay Protection**: An individual token cannot be scanned more than once by the same student.
@@ -293,8 +293,8 @@ npm test
 ### Verified Test Scenarios:
 1. **Haversine Distance**: Verifies accurate mathematical distance computation between coordinates (0m, ~55m, >500m).
 2. **Trip Validation**: Blocks attendance if no active trip is running.
-3. **Driver Trip Start**: Verifies trip creation and initial 3-minute (180s) QR token generation.
-4. **Dynamic QR**: Returns active valid token with countdown (180s = 3 minutes).
+3. **Driver Trip Start**: Verifies trip creation and initial 20-minute (1200s) QR token generation.
+4. **Dynamic QR**: Returns active valid token with countdown (1200s = 20 minutes).
 5. **Valid Attendance**: Verifies successful attendance marking (`PRESENT`) with registered device within 100m.
 6. **Anti-Proxy (Duplicate Prevention)**: Blocks duplicate submission on the same trip (`400 Attendance already marked for this trip`).
 7. **Anti-Proxy (Device Mismatch)**: Blocks attempts to mark attendance from an unregistered phone (`403 This account is registered to another device`).
@@ -302,7 +302,7 @@ npm test
 9. **Anti-Proxy (Geofence Distance)**: Blocks attendance when GPS coordinates are outside the permitted radius (`400 You are outside the permitted bus area`).
 10. **Anti-Proxy (Low Accuracy)**: Blocks coarse location attempts (>100m GPS error).
 11. **Role Enforcement**: Prevents drivers/admins from marking student attendance.
-12. **Concurrent Attendance (55 Students)**: Verifies multiple students marking attendance simultaneously using the SAME 3-minute QR token.
+12. **Concurrent Attendance (55 Students)**: Verifies multiple students marking attendance simultaneously using the SAME 20-minute QR token.
 13. **Trip Stop**: Successfully closes attendance and recalculates attendance percentages.
 14. **Excel (.xlsx) Export Verification**: Confirms generation of valid Excel binary spreadsheet with boys/girls present metrics, absent boys with name and year, and absent girls with name and year.
 ---
@@ -340,7 +340,7 @@ For production deployment:
    - `MONGODB_URI`: `<Your MongoDB Atlas Connection String>`
    - `JWT_SECRET`: `<A secure random string>`
    - `CLIENT_URL`: `https://your-frontend.vercel.app`
-   - `QR_EXPIRY_SECONDS`: `25`
+   - `QR_EXPIRY_SECONDS`: `1200`
    - `DEFAULT_GEOFENCE_RADIUS`: `100`
 6. Click **Create Web Service**.
 7. Once deployed, verify health check at:
