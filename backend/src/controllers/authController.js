@@ -13,20 +13,45 @@ const generateToken = (id, role, email) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, identifier: rawIdentifier, password } = req.body;
+    const identifier = (rawIdentifier || username || email || '').trim();
 
-    if (!email || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide email and password',
+        message: 'Please provide username/email and password',
       });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    const escapedIdentifier = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // 1. Check direct match on email, username, or name (case-insensitive)
+    let user = await User.findOne({
+      $or: [
+        { email: identifier.toLowerCase() },
+        { username: new RegExp(`^${escapedIdentifier}$`, 'i') },
+        { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
+      ],
+    });
+
+    // 2. If not found, check Student collection by rollNumber, studentId, or student name
+    if (!user) {
+      const student = await Student.findOne({
+        $or: [
+          { rollNumber: identifier.toUpperCase() },
+          { studentId: identifier.toUpperCase() },
+          { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
+        ],
+      });
+      if (student) {
+        user = await User.findById(student.userId);
+      }
+    }
+
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.',
+        message: 'Invalid username/email or password.',
       });
     }
 
@@ -34,7 +59,7 @@ export const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password.',
+        message: 'Invalid username/email or password.',
       });
     }
 

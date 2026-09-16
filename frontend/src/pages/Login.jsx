@@ -66,27 +66,29 @@ export const Login = () => {
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                College Email
+                Student Name / Username / Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Mail className="w-4 h-4" />
                 </div>
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="student01@college.edu"
+                  placeholder="e.g. Magila D, Kowshiek R, or admin@college.edu"
                   className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Password
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Password
+                </label>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Lock className="w-4 h-4" />
@@ -96,10 +98,13 @@ export const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="e.g. magilaAIDS, kowshiekIT"
                   className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                <span className="font-semibold text-slate-700">Student Password format:</span> name without initial (lowercase) + Department (uppercase), e.g. <span className="font-semibold text-indigo-600">magilaAIDS</span>, <span className="font-semibold text-indigo-600">kowshiekIT</span>.
+              </p>
             </div>
 
             <button
@@ -118,7 +123,7 @@ export const Login = () => {
           {/* Quick Demo Fill Buttons */}
           <div className="mt-6 pt-6 border-t border-slate-100">
             <p className="text-xs font-semibold text-slate-500 text-center mb-3">
-              Demo Credentials (One-Click Fill)
+              Quick Test Credentials (One-Click Fill)
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -139,19 +144,19 @@ export const Login = () => {
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoSelect('student01@college.edu', 'Student@123')}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
+                onClick={() => handleDemoSelect('Magila D', 'magilaAIDS')}
+                className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-pink-50 hover:text-pink-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
               >
-                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Student 01 (Boy)</span>
+                <Smartphone className="w-3.5 h-3.5 text-pink-600" />
+                <span>Magila D (Girl - AIDS)</span>
               </button>
               <button
                 type="button"
-                onClick={() => handleDemoSelect('student02@college.edu', 'Student@123')}
+                onClick={() => handleDemoSelect('Kowshiek R', 'kowshiekIT')}
                 className="px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 rounded-lg transition border border-slate-200 flex items-center justify-center space-x-1"
               >
-                <Smartphone className="w-3.5 h-3.5 text-pink-600" />
-                <span>Student 02 (Girl)</span>
+                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Kowshiek R (Boy - IT)</span>
               </button>
             </div>
           </div>

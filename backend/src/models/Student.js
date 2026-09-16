@@ -46,14 +46,14 @@ const studentSchema = new mongoose.Schema(
     department: {
       type: String,
       required: true,
-      enum: ['Computer Science & Engineering', 'Information Technology', 'Electronics & Communication', 'Mechanical Engineering'],
-      default: 'Computer Science & Engineering',
+      trim: true,
+      default: 'CSE',
     },
     year: {
       type: String,
       required: true,
-      enum: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-      default: '3rd Year',
+      trim: true,
+      default: '1st Year',
     },
     role: {
       type: String,

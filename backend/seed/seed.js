@@ -12,74 +12,78 @@ import { AuditLog } from '../src/models/AuditLog.js';
 
 dotenv.config();
 
+// Helper to derive student password: name (in lowercase without initial) + Department (in uppercase)
+export const deriveStudentPassword = (name, department) => {
+  let cleanName = (name || '').trim();
+  // If starts with single letter initial like "S Hari" -> "Hari"
+  if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
+    cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
+  }
+  // Remove trailing initials: e.g. " D", " V P", " B.S", " VM", " R K", " K N", " S N"
+  cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
+  const cleanDept = (department || '').trim().toUpperCase();
+  return cleanDept ? `${cleanName}${cleanDept}` : cleanName;
+};
+
 // 55 Registered Students Dataset: Exactly 21 Boys and 34 Girls
-const initialStudentsDataset = [
-  // 1-10 (5 Boys, 5 Girls)
-  { name: 'Aarav Sharma', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Aditi Rao', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Akash Patel', gender: 'Male', year: '2nd Year', department: 'Electronics & Communication' },
-  { name: 'Ananya Iyer', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Arjun Menon', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
-  { name: 'Bhavna Joshi', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Chetan Verma', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Deepa Nair', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
-  { name: 'Devendra Reddy', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Divya Sundaram', gender: 'Female', year: '4th Year', department: 'Information Technology' },
-
-  // 11-20 (6 Boys, 4 Girls)
-  { name: 'Gautam Pillai', gender: 'Male', year: '3rd Year', department: 'Mechanical Engineering' },
-  { name: 'Gayatri Kapoor', gender: 'Female', year: '2nd Year', department: 'Computer Science & Engineering' },
-  { name: 'Harish Chandra', gender: 'Male', year: '3rd Year', department: 'Electronics & Communication' },
-  { name: 'Hemalatha K', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Ishan Deshmukh', gender: 'Male', year: '2nd Year', department: 'Computer Science & Engineering' },
-  { name: 'Janani S', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
-  { name: 'Jitendra Das', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
-  { name: 'Kalyan Raman', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Kavitha N', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Kishore Kumar', gender: 'Male', year: '2nd Year', department: 'Electronics & Communication' },
-
-  // 21-30 (6 Boys, 4 Girls)
-  { name: 'Lakshmi Narayanan', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Madhavan R', gender: 'Male', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Meera Bhatt', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
-  { name: 'Manoj Tiwari', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
-  { name: 'Namrata Sen', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Naveen Raj', gender: 'Male', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Niharika Roy', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
-  { name: 'Nirmal Prabhu', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Pradeep Hegde', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
-  { name: 'Pranav Anand', gender: 'Male', year: '2nd Year', department: 'Computer Science & Engineering' },
-
-  // 31-40 (4 Boys, 6 Girls) -> Cumulative Boys: 21
-  { name: 'Pavithra M', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Preethi V', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
-  { name: 'Rahul Mehra', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Rajeshwari B', gender: 'Female', year: '2nd Year', department: 'Information Technology' },
-  { name: 'Rakesh Nair', gender: 'Male', year: '4th Year', department: 'Mechanical Engineering' },
-  { name: 'Ramesh Krishnan', gender: 'Male', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Renu Mathur', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
-  { name: 'Rishabh Sinha', gender: 'Male', year: '2nd Year', department: 'Information Technology' },
-  { name: 'Riya Mukherjee', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Roshni Gupta', gender: 'Female', year: '3rd Year', department: 'Mechanical Engineering' },
-
-  // 41-50 (0 Boys, 10 Girls)
-  { name: 'Rohini Paul', gender: 'Female', year: '4th Year', department: 'Information Technology' },
-  { name: 'Sadhana Rao', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Sai Pallavi', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
-  { name: 'Sangeetha Swaminathan', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Sandhya V', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Santhoshi Priya', gender: 'Female', year: '4th Year', department: 'Mechanical Engineering' },
-  { name: 'Sapna Sharma', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Saranya G', gender: 'Female', year: '2nd Year', department: 'Electronics & Communication' },
-  { name: 'Shalini Mohan', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Shilpa Shetty', gender: 'Female', year: '4th Year', department: 'Computer Science & Engineering' },
-
-  // 51-55 (0 Boys, 5 Girls) -> Exactly 55 Students (21 Boys, 34 Girls)
-  { name: 'Shobana Chandran', gender: 'Female', year: '3rd Year', department: 'Electronics & Communication' },
-  { name: 'Shraddha Kapoor', gender: 'Female', year: '2nd Year', department: 'Mechanical Engineering' },
-  { name: 'Shruti Haasan', gender: 'Female', year: '3rd Year', department: 'Information Technology' },
-  { name: 'Sowmya Ramaswamy', gender: 'Female', year: '3rd Year', department: 'Computer Science & Engineering' },
-  { name: 'Sneha Reddy', gender: 'Female', year: '4th Year', department: 'Computer Science & Engineering' },
+export const initialStudentsDataset = [
+  { id: 1, name: 'Magila D', department: 'AIDS', year: '1st Year', gender: 'Female' },
+  { id: 2, name: 'Sowmitha S', department: 'ECE', year: '3rd Year', gender: 'Female' },
+  { id: 3, name: 'Ramya V', department: 'CSE', year: '3rd Year', gender: 'Female' },
+  { id: 4, name: 'Kavya V P', department: 'BME', year: '3rd Year', gender: 'Female' },
+  { id: 5, name: 'Parthiban G', department: 'CCE', year: '3rd Year', gender: 'Male' },
+  { id: 6, name: 'Kishalini P', department: 'AIDS', year: '2nd Year', gender: 'Female' },
+  { id: 7, name: 'Mouleeshwari B', department: 'ECE', year: '2nd Year', gender: 'Female' },
+  { id: 8, name: 'Makitha R', department: 'AIDS', year: '3rd Year', gender: 'Female' },
+  { id: 9, name: 'Kalbhavalli M', department: 'AIDS', year: '2nd Year', gender: 'Female' },
+  { id: 10, name: 'Thamarai Selvi D', department: 'ECE', year: '2nd Year', gender: 'Female' },
+  { id: 11, name: 'Vishalini B', department: 'IT', year: '3rd Year', gender: 'Female' },
+  { id: 12, name: 'Visalaachi', department: 'CSE', year: '1st Year', gender: 'Female' },
+  { id: 13, name: 'Mahesha B', department: 'CSE', year: '1st Year', gender: 'Female' },
+  { id: 14, name: 'Dharanidharan K', department: 'ECE', year: '1st Year', gender: 'Male' },
+  { id: 15, name: 'Mukesh R', department: 'ECE', year: '1st Year', gender: 'Male' },
+  { id: 16, name: 'Dharshini B.S', department: 'AIDS', year: '1st Year', gender: 'Female' },
+  { id: 17, name: 'Karthick R', department: 'CCE', year: '1st Year', gender: 'Male' },
+  { id: 18, name: 'Srigiridharan L', department: 'EEE', year: '1st Year', gender: 'Male' },
+  { id: 19, name: 'Dhanya J V', department: 'EEE', year: '4th Year', gender: 'Female' },
+  { id: 20, name: 'Dharnesh', department: 'CSBS', year: '4th Year', gender: 'Male' },
+  { id: 21, name: 'Roshni M', department: 'ECE', year: '1st Year', gender: 'Female' },
+  { id: 22, name: 'Harshikaa S', department: 'CSE', year: '3rd Year', gender: 'Female' },
+  { id: 23, name: 'Srinithe T', department: 'ECE', year: '2nd Year', gender: 'Female' },
+  { id: 24, name: 'Naviha K', department: 'CSE', year: '3rd Year', gender: 'Female' },
+  { id: 25, name: 'Monisha K', department: 'CSE', year: '1st Year', gender: 'Female' },
+  { id: 26, name: 'Navaneesh D', department: 'CSE', year: '1st Year', gender: 'Male' },
+  { id: 27, name: 'Gubendhiran M', department: 'AIDS', year: '3rd Year', gender: 'Male' },
+  { id: 28, name: 'Siddhaarth R K', department: 'CSBS', year: '3rd Year', gender: 'Male' },
+  { id: 29, name: 'Loahith V', department: 'CSE', year: '3rd Year', gender: 'Male' },
+  { id: 30, name: 'Gokulram K', department: 'EEE', year: '2nd Year', gender: 'Male' },
+  { id: 31, name: 'Swetha R', department: 'CSBS', year: '3rd Year', gender: 'Female' },
+  { id: 32, name: 'Kowshiek R', department: 'IT', year: '3rd Year', gender: 'Male' },
+  { id: 33, name: 'S Hari', department: 'ECE', year: '2nd Year', gender: 'Male' },
+  { id: 34, name: 'Bhavatarani G', department: 'AIDS', year: '1st Year', gender: 'Female' },
+  { id: 35, name: 'Vaishnavi U', department: 'ECE', year: '2nd Year', gender: 'Female' },
+  { id: 36, name: 'Thanseera S', department: 'AIML', year: '4th Year', gender: 'Female' },
+  { id: 37, name: 'Keerthika B', department: 'AIML', year: '4th Year', gender: 'Female' },
+  { id: 38, name: 'Deepshika P', department: 'AIDS', year: '2nd Year', gender: 'Female' },
+  { id: 39, name: 'Pravinaa S N', department: 'CSBS', year: '3rd Year', gender: 'Female' },
+  { id: 40, name: 'Aarani S', department: 'IT', year: '1st Year', gender: 'Female' },
+  { id: 41, name: 'Varshinika K N', department: 'CSE', year: '3rd Year', gender: 'Female' },
+  { id: 42, name: 'Kanishaka E', department: 'ECE', year: '1st Year', gender: 'Female' },
+  { id: 43, name: 'Sadhana S', department: 'CIVIL', year: '2nd Year', gender: 'Female' },
+  { id: 44, name: 'Kisanth S', department: 'CSE', year: '1st Year', gender: 'Male' },
+  { id: 45, name: 'Vyasraj A', department: 'CSE', year: '1st Year', gender: 'Male' },
+  { id: 46, name: 'Dharun R', department: 'MECH', year: '4th Year', gender: 'Male' },
+  { id: 47, name: 'Dharshan K', department: 'AIML', year: '3rd Year', gender: 'Male' },
+  { id: 48, name: 'Dharaneesh C', department: 'MECH', year: '2nd Year', gender: 'Male' },
+  { id: 49, name: 'Monisha V', department: 'ECE', year: '2nd Year', gender: 'Female' },
+  { id: 50, name: 'Balah VM', department: 'ECE', year: '4th Year', gender: 'Female' },
+  { id: 51, name: 'Hemamalini S', department: 'ECE', year: '4th Year', gender: 'Female' },
+  { id: 52, name: 'Kalpaka E', department: 'BIO-TECH', year: '4th Year', gender: 'Female' },
+  { id: 53, name: 'Rohit M', department: 'BME', year: '2nd Year', gender: 'Male' },
+  { id: 54, name: 'Saravanan S', department: 'CIVIL', year: '2nd Year', gender: 'Male' },
+  { id: 55, name: 'Niranjan S', department: 'CSE', year: '3rd Year', gender: 'Male' }
 ];
 
 export const seedDatabase = async () => {
@@ -140,14 +144,17 @@ export const seedDatabase = async () => {
       const gender = template.gender;
       const year = template.year;
       const department = template.department;
+      const username = name;
+      const password = deriveStudentPassword(name, department);
       const email = `student${String(i).padStart(2, '0')}@college.edu`;
       const phone = `+91 98765 ${String(43200 + i).padStart(5, '0')}`;
 
       // Create user auth doc
       const user = await User.create({
         name,
+        username,
         email,
-        password: 'Student@123',
+        password,
         role: 'STUDENT',
         phone,
         isActive: true,

@@ -240,19 +240,33 @@ smart-bus-attendance/
 
 ## 🔑 Demo Accounts & Credentials
 
-The system includes pre-configured demo accounts for instant testing:
+The system is configured for **55 registered students** (21 Boys and 34 Girls). Students can log in using their **Student Name** as username and their **name (lowercase without initial) + Department (uppercase)** as password:
 
-| Role | Email | Password | Details |
+### Staff Accounts
+| Role | Username / Email | Password | Details |
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@college.edu` | `Admin@123` | Chief Administrator (Full access, Excel export, Student Feed) |
 | **Driver** | `driver@college.edu` | `Driver@123` | Senior Driver (Bus #BUS-01 console, 55 capacity) |
-| **Student 1 (Boy)** | `student01@college.edu` | `Student@123` | Roll No: `23CS001` (Aarav Sharma, 3rd Year) |
-| **Student 2 (Girl)** | `student02@college.edu` | `Student@123` | Roll No: `23CS002` (Aditi Rao, 2nd Year) |
-| **Student 3 (Boy)** | `student03@college.edu` | `Student@123` | Roll No: `23CS003` (Akash Patel, 4th Year) |
-| ... | ... | ... | ... |
-| **Student 55 (Girl)** | `student55@college.edu` | `Student@123` | Roll No: `23CS055` (Yamini Verma, 1st Year) |
 
-> 💡 **Tip**: On the Login screen, click any of the demo shortcut buttons (**Admin**, **Driver**, **Student 01 (Boy)**, **Student 02 (Girl)**) to populate credentials instantly.
+### Student Credentials Format
+- **Username**: Exact Student Name (e.g. `Magila D`, `Kowshiek R`, `S Hari`) or College Email (`student01@college.edu` to `student55@college.edu`)
+- **Password**: Student Name in lowercase without initial + Department in uppercase (e.g. `magilaAIDS`, `kowshiekIT`, `hariECE`)
+
+| # | Student Name (Username) | Dept | Year | Gender | Password | Email | Roll No |
+| :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | **Magila D** | AIDS | 1st Year (I) | Female | `magilaAIDS` | `student01@college.edu` | 23CS001 |
+| 2 | **Sowmitha S** | ECE | 3rd Year (III) | Female | `sowmithaECE` | `student02@college.edu` | 23CS002 |
+| 3 | **Ramya V** | CSE | 3rd Year (III) | Female | `ramyaCSE` | `student03@college.edu` | 23CS003 |
+| 4 | **Kavya V P** | BME | 3rd Year (III) | Female | `kavyaBME` | `student04@college.edu` | 23CS004 |
+| 5 | **Parthiban G** | CCE | 3rd Year (III) | Male | `parthibanCCE` | `student05@college.edu` | 23CS005 |
+| ... | ... | ... | ... | ... | ... | ... | ... |
+| 32 | **Kowshiek R** | IT | 3rd Year (III) | Male | `kowshiekIT` | `student32@college.edu` | 23CS032 |
+| 33 | **S Hari** | ECE | 2nd Year (II) | Male | `hariECE` | `student33@college.edu` | 23CS033 |
+| 50 | **Balah VM** | ECE | 4th Year (IV) | Female | `balahECE` | `student50@college.edu` | 23CS050 |
+| 52 | **Kalpaka E** | BIO-TECH | 4th Year (IV) | Female | `kalpakaBIO-TECH` | `student52@college.edu` | 23CS052 |
+| 55 | **Niranjan S** | CSE | 3rd Year (III) | Male | `niranjanCSE` | `student55@college.edu` | 23CS055 |
+
+> 💡 **Tip**: On the Login screen, click any of the 1-click test shortcut buttons (**Admin**, **Driver**, **Magila D**, **Kowshiek R**) to populate credentials instantly.
 
 ---
 

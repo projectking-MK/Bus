@@ -4,6 +4,18 @@ import { Device } from '../models/Device.js';
 import { Attendance } from '../models/Attendance.js';
 import { AuditLog } from '../models/AuditLog.js';
 
+export const deriveStudentPassword = (name, department) => {
+  let cleanName = (name || '').trim();
+  if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
+    cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
+  }
+  cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
+  const cleanDept = (department || '').trim().toUpperCase();
+  return cleanDept ? `${cleanName}${cleanDept}` : cleanName;
+};
+
 export const getAllStudents = async (req, res) => {
   try {
     const { search, department, year, status } = req.query;
@@ -107,10 +119,12 @@ export const createStudent = async (req, res) => {
     }
 
     // Create User account
+    const studentPassword = password || deriveStudentPassword(name, department || 'CSE');
     const user = await User.create({
       name,
+      username: name,
       email: email.toLowerCase().trim(),
-      password: password || 'Student@123',
+      password: studentPassword,
       role: 'STUDENT',
       phone: phone || '',
     });
@@ -287,10 +301,12 @@ export const importStudents = async (req, res) => {
         // Create new user & student
         let user = await User.findOne({ email: fallbackEmail });
         if (!user) {
+          const studentPassword = item.password || deriveStudentPassword(name, department);
           user = await User.create({
             name,
+            username: name,
             email: fallbackEmail,
-            password: 'Student@123',
+            password: studentPassword,
             role: 'STUDENT',
             phone,
             isActive: true,

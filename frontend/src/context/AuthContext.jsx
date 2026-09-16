@@ -50,8 +50,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
-    const res = await axiosClient.post('/api/auth/login', { email, password });
+  const login = async (identifier, password) => {
+    const res = await axiosClient.post('/api/auth/login', {
+      identifier,
+      email: identifier,
+      username: identifier,
+      password,
+    });
     if (res.data.success) {
       const { token: newToken, user: newUser, student: newStudent } = res.data;
       localStorage.setItem('smart_bus_auth_token', newToken);
