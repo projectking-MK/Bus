@@ -8,6 +8,7 @@ export const convertAttendanceToCSV = (records) => {
   const headers = [
     'Roll Number',
     'Student Name',
+    'Gender',
     'Department',
     'Year',
     'Status',
@@ -36,6 +37,7 @@ export const convertAttendanceToCSV = (records) => {
     return [
       escapeCSV(student.rollNumber || 'N/A'),
       escapeCSV(student.name || 'N/A'),
+      escapeCSV(student.gender || 'N/A'),
       escapeCSV(student.department || 'N/A'),
       escapeCSV(student.year || 'N/A'),
       escapeCSV(rec.status || 'N/A'),

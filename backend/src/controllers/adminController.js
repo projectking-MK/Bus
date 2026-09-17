@@ -172,7 +172,7 @@ export const getDashboardSummary = async (req, res) => {
 
 export const getAttendanceLogs = async (req, res) => {
   try {
-    const { search, date, status, tripId } = req.query;
+    const { search, date, status, tripId, gender } = req.query;
     const filter = {};
 
     if (status) {
@@ -191,9 +191,14 @@ export const getAttendanceLogs = async (req, res) => {
     }
 
     let records = await Attendance.find(filter)
-      .populate('studentId', 'rollNumber name department year phone')
+      .populate('studentId', 'rollNumber name department year phone gender')
       .populate('tripId', 'tripId status startTime')
       .sort({ markedAt: -1 });
+
+    if (gender && gender !== 'ALL') {
+      const targetGender = gender.toUpperCase() === 'GIRLS' || gender.toLowerCase() === 'female' ? 'Female' : 'Male';
+      records = records.filter((r) => r.studentId?.gender === targetGender);
+    }
 
     if (search) {
       const s = search.toLowerCase();
@@ -220,7 +225,7 @@ export const getAttendanceLogs = async (req, res) => {
 
 export const exportAttendanceCSV = async (req, res) => {
   try {
-    const { date, status, tripId } = req.query;
+    const { date, status, tripId, gender } = req.query;
     const filter = {};
 
     if (status) filter.status = status;
@@ -232,10 +237,15 @@ export const exportAttendanceCSV = async (req, res) => {
       filter.markedAt = { $gte: startOfDay, $lte: endOfDay };
     }
 
-    const records = await Attendance.find(filter)
-      .populate('studentId', 'rollNumber name department year')
+    let records = await Attendance.find(filter)
+      .populate('studentId', 'rollNumber name department year gender phone')
       .populate('tripId', 'tripId')
       .sort({ markedAt: -1 });
+
+    if (gender && gender !== 'ALL') {
+      const targetGender = gender.toUpperCase() === 'GIRLS' || gender.toLowerCase() === 'female' ? 'Female' : 'Male';
+      records = records.filter((r) => r.studentId?.gender === targetGender);
+    }
 
     const csvData = convertAttendanceToCSV(records);
 

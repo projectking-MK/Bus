@@ -766,6 +766,51 @@ test('GPS Range Security: validates 100m, 3km, and 100km geofence boundaries', a
   });
 });
 
+test('Attendance Verification Logs: accurately populates student gender (Male and Female) and supports gender filtering', async () => {
+  const logsRes = await makeRequest(
+    'GET',
+    '/api/admin/attendance',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+
+  assert.equal(logsRes.status, 200);
+  assert.ok(logsRes.body.records.length > 0);
+
+  // Find Student 1 (Male) record
+  const student1Log = logsRes.body.records.find((r) => r.studentId?.rollNumber === '23CS001');
+  assert.ok(student1Log);
+  assert.equal(student1Log.studentId?.gender, 'Male');
+
+  // Find Student 2 (Female) record
+  const student2Log = logsRes.body.records.find((r) => r.studentId?.rollNumber === '23CS002');
+  assert.ok(student2Log);
+  assert.equal(student2Log.studentId?.gender, 'Female');
+
+  // Filter by GIRLS only
+  const girlsLogsRes = await makeRequest(
+    'GET',
+    '/api/admin/attendance?gender=GIRLS',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(girlsLogsRes.status, 200);
+  assert.ok(girlsLogsRes.body.records.length > 0);
+  assert.ok(girlsLogsRes.body.records.every((r) => r.studentId?.gender === 'Female'));
+
+  // Filter by BOYS only
+  const boysLogsRes = await makeRequest(
+    'GET',
+    '/api/admin/attendance?gender=BOYS',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(boysLogsRes.status, 200);
+  assert.ok(boysLogsRes.body.records.length > 0);
+  assert.ok(boysLogsRes.body.records.every((r) => r.studentId?.gender === 'Male'));
+});
+
+
 
 
 

@@ -105,11 +105,18 @@ if (isMainModule && process.env.NODE_ENV !== 'test') {
         const { seedDatabase } = await import('../seed/seed.js');
         await seedDatabase();
       } else {
-        // Ensure admin, driver, and bus identifier are updated in existing database
+        // Ensure admin, driver, bus identifier, and student genders are updated in existing database
         const { Bus } = await import('./models/Bus.js');
+        const { initialStudentsDataset } = await import('../seed/seed.js');
         await User.updateMany({ role: 'ADMIN' }, { $set: { name: 'R. Kowshiek IT' } });
         await User.updateMany({ role: 'DRIVER' }, { $set: { name: 'Anand' } });
         await Bus.updateMany({}, { $set: { busNumber: 'BUS-09' } });
+        for (const item of initialStudentsDataset) {
+          await Student.updateOne(
+            { rollNumber: `23CS${String(item.id).padStart(3, '0')}` },
+            { $set: { gender: item.gender } }
+          );
+        }
       }
 
       app.listen(PORT, () => {

@@ -349,7 +349,7 @@ export const getTodayAttendance = async (req, res) => {
     }
 
     const records = await Attendance.find(filter)
-      .populate('studentId', 'rollNumber name department year')
+      .populate('studentId', 'rollNumber name department year gender')
       .populate('tripId', 'tripId status startTime')
       .sort({ markedAt: -1 });
 
@@ -379,7 +379,7 @@ export const getActiveTripAttendance = async (req, res) => {
     }
 
     const records = await Attendance.find({ tripId: activeTrip._id })
-      .populate('studentId', 'rollNumber name department year phone')
+      .populate('studentId', 'rollNumber name department year phone gender')
       .sort({ markedAt: -1 });
 
     res.json({
