@@ -134,7 +134,9 @@ export const Navbar = () => {
           <div className="flex items-center space-x-3">
             <div className="text-right">
               <div className="flex items-center justify-end space-x-1.5">
-                <span className="text-sm font-semibold text-slate-800">{user.name}</span>
+                <span className="text-sm font-semibold text-slate-800">
+                  {user.role === 'DRIVER' ? (user.name && !user.name.includes('Muthuvel') ? user.name : 'Anand') : user.name}
+                </span>
                 <span
                   className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${
                     user.role === 'ADMIN'

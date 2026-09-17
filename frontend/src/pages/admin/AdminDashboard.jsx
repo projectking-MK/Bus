@@ -346,7 +346,7 @@ export const AdminDashboard = () => {
                   {activeTrip.busNumber} • {activeTrip.routeName}
                 </h3>
                 <p className="text-xs text-indigo-200 mt-1">
-                  Driver: {activeTrip.driverName || 'Designated Driver'} • Trip ID: <span className="font-mono">{activeTrip.tripId}</span>
+                  Driver: {activeTrip.driverName && !activeTrip.driverName.includes('Muthuvel') ? activeTrip.driverName : 'Anand'} • Trip ID: <span className="font-mono">{activeTrip.tripId}</span>
                 </p>
               </div>
 

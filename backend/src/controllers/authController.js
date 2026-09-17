@@ -24,13 +24,15 @@ export const login = async (req, res) => {
     }
 
     const escapedIdentifier = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const isAnand = identifier.toLowerCase() === 'anand';
 
-    // 1. Check direct match on email, username, or name (case-insensitive)
+    // 1. Check direct match on email, username, or name (case-insensitive), or role DRIVER if identifier is 'anand'
     let candidateUsers = await User.find({
       $or: [
         { email: identifier.toLowerCase() },
         { username: new RegExp(`^${escapedIdentifier}$`, 'i') },
         { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
+        ...(isAnand ? [{ role: 'DRIVER' }] : []),
       ],
     });
 
@@ -81,6 +83,12 @@ export const login = async (req, res) => {
       });
     }
 
+    // Ensure driver name is Anand
+    if (user.role === 'DRIVER' && user.name !== 'Anand') {
+      user.name = 'Anand';
+      await User.findByIdAndUpdate(user._id, { name: 'Anand' });
+    }
+
     const token = generateToken(user._id, user.role, user.email);
 
     let studentData = null;
@@ -104,7 +112,7 @@ export const login = async (req, res) => {
       token,
       user: {
         id: user._id,
-        name: user.name,
+        name: user.role === 'DRIVER' ? 'Anand' : user.name,
         email: user.email,
         role: user.role,
         phone: user.phone,
@@ -124,6 +132,15 @@ export const login = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'DRIVER' && user.name !== 'Anand') {
+      user.name = 'Anand';
+      await User.findByIdAndUpdate(user._id, { name: 'Anand' });
+    }
+
     let student = null;
 
     if (user.role === 'STUDENT') {

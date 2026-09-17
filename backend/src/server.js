@@ -98,11 +98,15 @@ if (isMainModule && process.env.NODE_ENV !== 'test') {
     .then(async () => {
       // Auto-seed if database has no students
       const { Student } = await import('./models/Student.js');
+      const { User } = await import('./models/User.js');
       const count = await Student.countDocuments();
       if (count === 0) {
-        console.log('[Startup] Database is empty. Auto-seeding 68 students & demo accounts...');
+        console.log('[Startup] Database is empty. Auto-seeding students & demo accounts...');
         const { seedDatabase } = await import('../seed/seed.js');
         await seedDatabase();
+      } else {
+        // Ensure driver name is updated to Anand in existing database
+        await User.updateMany({ role: 'DRIVER' }, { $set: { name: 'Anand' } });
       }
 
       app.listen(PORT, () => {
