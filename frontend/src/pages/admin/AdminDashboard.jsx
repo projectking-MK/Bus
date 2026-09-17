@@ -24,6 +24,9 @@ export const AdminDashboard = () => {
   const [selectedTripId, setSelectedTripId] = useState('');
   const [activeTab, setActiveTab] = useState('present'); // 'present' | 'absent'
 
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingCSV, setExportingCSV] = useState(false);
+
   const fetchDashboard = async (tripIdOverride) => {
     try {
       setLoading(true);
@@ -40,6 +43,68 @@ export const AdminDashboard = () => {
       setError('Failed to fetch dashboard metrics.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      setExportingExcel(true);
+      const url = `/api/admin/export-excel${selectedTrip ? `?tripId=${selectedTrip.id}` : ''}`;
+      const response = await axiosClient.get(url, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+
+      // Extract filename from Content-Disposition header if available
+      let filename = `Bus_Attendance_Report_${selectedTrip?.session || 'Trip'}.xlsx`;
+      const disposition = response.headers['content-disposition'];
+      if (disposition) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Failed to export Excel:', err);
+      alert('Failed to export Excel report. Please ensure your session is active.');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      setExportingCSV(true);
+      const url = `/api/admin/export${selectedTrip ? `?tripId=${selectedTrip.id}` : ''}`;
+      const response = await axiosClient.get(url, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', `Bus_Attendance_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Failed to export CSV:', err);
+      alert('Failed to export CSV. Please ensure your session is active.');
+    } finally {
+      setExportingCSV(false);
     }
   };
 
@@ -79,21 +144,21 @@ export const AdminDashboard = () => {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
-          <a
-            href={`${import.meta.env.VITE_API_URL || ''}/api/admin/export-excel${selectedTrip ? `?tripId=${selectedTrip.id}` : ''}`}
-            download
-            className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-2"
+          <button
+            onClick={handleExportExcel}
+            disabled={exportingExcel}
+            className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-2 disabled:opacity-60 cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Export Excel (.xlsx)</span>
-          </a>
-          <a
-            href={`${import.meta.env.VITE_API_URL || ''}/api/admin/export${selectedTrip ? `?tripId=${selectedTrip.id}` : ''}`}
-            download
-            className="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-sm font-medium transition flex items-center space-x-2"
+            <FileSpreadsheet className={`w-4 h-4 ${exportingExcel ? 'animate-spin' : ''}`} />
+            <span>{exportingExcel ? 'Generating Excel...' : 'Export Excel (.xlsx)'}</span>
+          </button>
+          <button
+            onClick={handleExportCSV}
+            disabled={exportingCSV}
+            className="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-sm font-medium transition flex items-center space-x-2 disabled:opacity-60 cursor-pointer"
           >
-            <span>CSV</span>
-          </a>
+            <span>{exportingCSV ? 'Exporting...' : 'CSV'}</span>
+          </button>
         </div>
       </div>
 
