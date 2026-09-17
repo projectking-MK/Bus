@@ -116,7 +116,7 @@ export const seedDatabase = async () => {
 
     console.log('[Seed] Creating Admin User...');
     const adminUser = await User.create({
-      name: 'Dr. S. Ramanathan (Chief Admin)',
+      name: 'R. Kowshiek IT',
       username: 'admin',
       email: 'admin@college.edu',
       password: 'Admin@123',

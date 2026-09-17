@@ -4,6 +4,7 @@ import {
   getAttendanceLogs,
   exportAttendanceCSV,
   exportAttendanceExcel,
+  exportStudentCredentials,
   getAuditLogs,
   updateGeofenceSettings,
   getBusSettings,
@@ -19,6 +20,7 @@ router.get('/dashboard', getDashboardSummary);
 router.get('/attendance', getAttendanceLogs);
 router.get('/export', exportAttendanceCSV);
 router.get('/export-excel', exportAttendanceExcel);
+router.get('/export-credentials', exportStudentCredentials);
 router.get('/audit-logs', getAuditLogs);
 router.get('/settings', getBusSettings);
 router.put('/settings', updateGeofenceSettings);

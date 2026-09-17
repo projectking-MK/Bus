@@ -245,7 +245,7 @@ The system is configured for **55 registered students** (21 Boys and 34 Girls). 
 ### Staff Accounts
 | Role | Username / Email | Password | Details |
 | :--- | :--- | :--- | :--- |
-| **Admin** | `admin@college.edu` | `Admin@123` | Chief Administrator (Full access, Excel export, Student Feed) |
+| **Admin** | `admin@college.edu` | `Admin@123` | R. Kowshiek IT (Full access, Excel export, Student Feed) |
 | **Driver** | `driver@college.edu` | `Driver@123` | Anand (Bus #Bus No-09 console, 55 capacity) |
 
 #### Student Credentials Format

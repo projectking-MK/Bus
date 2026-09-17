@@ -14,7 +14,10 @@ import {
   RefreshCw,
   Smartphone,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Key,
+  ChevronDown,
+  Download
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -26,6 +29,7 @@ export const AdminDashboard = () => {
 
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false);
+  const [exportingCreds, setExportingCreds] = useState(false);
 
   const fetchDashboard = async (tripIdOverride) => {
     try {
@@ -108,6 +112,39 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleExportCredentials = async (gender = 'ALL', format = 'xlsx') => {
+    try {
+      setExportingCreds(true);
+      const url = `/api/admin/export-credentials?gender=${gender}&format=${format}`;
+      const mimeType = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const response = await axiosClient.get(url, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: mimeType });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+
+      let filename = `${gender === 'GIRLS' ? 'Girls' : gender === 'BOYS' ? 'Boys' : 'All_Students'}_Credentials.${format}`;
+      const disposition = response.headers['content-disposition'];
+      if (disposition) {
+        const match = disposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) filename = match[1];
+      }
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Failed to export credentials:', err);
+      alert('Failed to export student credentials. Please ensure your session is active.');
+    } finally {
+      setExportingCreds(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     const interval = setInterval(() => {
@@ -144,6 +181,69 @@ export const AdminDashboard = () => {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
+
+          {/* Student Credentials Export Dropdown */}
+          <div className="relative group">
+            <button
+              type="button"
+              disabled={exportingCreds}
+              className="px-3.5 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-2 disabled:opacity-60 cursor-pointer"
+            >
+              <Key className="w-4 h-4" />
+              <span>{exportingCreds ? 'Downloading...' : 'Student Credentials'}</span>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+            <div className="absolute right-0 mt-1 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 z-50 hidden group-hover:block transition-all">
+              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Excel Spreadsheets (.xlsx)
+              </div>
+              <button
+                type="button"
+                onClick={() => handleExportCredentials('BOYS', 'xlsx')}
+                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between"
+              >
+                <span>👦 Boys Credentials (21)</span>
+                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono">Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportCredentials('GIRLS', 'xlsx')}
+                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-pink-50 hover:text-pink-700 flex items-center justify-between"
+              >
+                <span>👧 Girls Credentials (34)</span>
+                <span className="text-[10px] bg-pink-100 text-pink-700 px-1.5 py-0.5 rounded font-mono">Excel</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportCredentials('ALL', 'xlsx')}
+                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 flex items-center justify-between border-b border-slate-100 pb-2"
+              >
+                <span>👥 Master (Both Sheets)</span>
+                <span className="text-[10px] bg-slate-150 text-slate-700 px-1.5 py-0.5 rounded font-mono">Excel</span>
+              </button>
+
+              <div className="px-3 pt-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                PDF Documents (.pdf)
+              </div>
+              <button
+                type="button"
+                onClick={() => handleExportCredentials('BOYS', 'pdf')}
+                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between"
+              >
+                <span>👦 Boys Credentials (21)</span>
+                <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono">PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExportCredentials('GIRLS', 'pdf')}
+                className="w-full text-left px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-700 flex items-center justify-between"
+              >
+                <span>👧 Girls Credentials (34)</span>
+                <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded font-mono">PDF</span>
+              </button>
+            </div>
+          </div>
+
           <button
             onClick={handleExportExcel}
             disabled={exportingExcel}

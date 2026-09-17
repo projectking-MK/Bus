@@ -38,7 +38,7 @@ test.before(async () => {
 
   // Setup test accounts
   const admin = await User.create({
-    name: 'Admin Test',
+    name: 'R. Kowshiek IT',
     email: 'admin.test@college.edu',
     password: 'AdminPassword123',
     role: 'ADMIN',
@@ -626,5 +626,44 @@ test('Student can automatically update their current GPS location upon login', a
   assert.equal(student.lastGpsAccuracy, 12.5);
   assert.ok(student.lastLocationUpdate);
 });
+
+test('Admin can export Boys and Girls credentials in Excel and PDF formats', async () => {
+  // 1. Export Boys Excel
+  const boysExcelRes = await makeRequest(
+    'GET',
+    '/api/admin/export-credentials?gender=BOYS&format=xlsx',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(boysExcelRes.status, 200);
+
+  // 2. Export Girls Excel
+  const girlsExcelRes = await makeRequest(
+    'GET',
+    '/api/admin/export-credentials?gender=GIRLS&format=xlsx',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(girlsExcelRes.status, 200);
+
+  // 3. Export Boys PDF
+  const boysPdfRes = await makeRequest(
+    'GET',
+    '/api/admin/export-credentials?gender=BOYS&format=pdf',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(boysPdfRes.status, 200);
+
+  // 4. Export Girls PDF
+  const girlsPdfRes = await makeRequest(
+    'GET',
+    '/api/admin/export-credentials?gender=GIRLS&format=pdf',
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(girlsPdfRes.status, 200);
+});
+
 
 

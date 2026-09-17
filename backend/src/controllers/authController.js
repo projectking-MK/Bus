@@ -83,7 +83,11 @@ export const login = async (req, res) => {
       });
     }
 
-    // Ensure driver name is Anand
+    // Ensure admin and driver names are updated
+    if (user.role === 'ADMIN' && user.name !== 'R. Kowshiek IT') {
+      user.name = 'R. Kowshiek IT';
+      await User.findByIdAndUpdate(user._id, { name: 'R. Kowshiek IT' });
+    }
     if (user.role === 'DRIVER' && user.name !== 'Anand') {
       user.name = 'Anand';
       await User.findByIdAndUpdate(user._id, { name: 'Anand' });
@@ -112,7 +116,7 @@ export const login = async (req, res) => {
       token,
       user: {
         id: user._id,
-        name: user.role === 'DRIVER' ? 'Anand' : user.name,
+        name: user.role === 'ADMIN' ? 'R. Kowshiek IT' : user.role === 'DRIVER' ? 'Anand' : user.name,
         email: user.email,
         role: user.role,
         phone: user.phone,
@@ -134,6 +138,11 @@ export const getMe = async (req, res) => {
     const user = await User.findById(req.user._id).select('-password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.role === 'ADMIN' && user.name !== 'R. Kowshiek IT') {
+      user.name = 'R. Kowshiek IT';
+      await User.findByIdAndUpdate(user._id, { name: 'R. Kowshiek IT' });
     }
 
     if (user.role === 'DRIVER' && user.name !== 'Anand') {

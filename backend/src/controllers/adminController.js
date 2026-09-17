@@ -5,6 +5,7 @@ import { Bus } from '../models/Bus.js';
 import { AuditLog } from '../models/AuditLog.js';
 import { convertAttendanceToCSV } from '../utils/csvExporter.js';
 import { generateAttendanceExcelWorkbook } from '../utils/excelExporter.js';
+import { generateCredentialsWorkbook, generateCredentialsPDFDoc } from '../utils/credentialsExporter.js';
 
 export const getDashboardSummary = async (req, res) => {
   try {
@@ -323,6 +324,42 @@ export const exportAttendanceExcel = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to export attendance Excel report',
+      error: error.message,
+    });
+  }
+};
+
+export const exportStudentCredentials = async (req, res) => {
+  try {
+    const { gender = 'ALL', format = 'xlsx' } = req.query;
+    const isPDF = format.toLowerCase() === 'pdf';
+    const genderTag = gender.toUpperCase();
+
+    if (isPDF) {
+      const doc = generateCredentialsPDFDoc({ gender: genderTag });
+      const filename = `${genderTag === 'GIRLS' ? 'Girls' : genderTag === 'BOYS' ? 'Boys' : 'Student'}_Credentials.pdf`;
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      doc.pipe(res);
+      doc.end();
+    } else {
+      const workbook = generateCredentialsWorkbook({ gender: genderTag });
+      const filename = `${genderTag === 'GIRLS' ? 'Girls' : genderTag === 'BOYS' ? 'Boys' : 'Student'}_Credentials.xlsx`;
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      await workbook.xlsx.write(res);
+      res.end();
+    }
+  } catch (error) {
+    console.error('[Export Student Credentials Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export student credentials',
       error: error.message,
     });
   }

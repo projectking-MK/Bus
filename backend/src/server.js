@@ -105,7 +105,8 @@ if (isMainModule && process.env.NODE_ENV !== 'test') {
         const { seedDatabase } = await import('../seed/seed.js');
         await seedDatabase();
       } else {
-        // Ensure driver name is updated to Anand in existing database
+        // Ensure admin and driver names are updated in existing database
+        await User.updateMany({ role: 'ADMIN' }, { $set: { name: 'R. Kowshiek IT' } });
         await User.updateMany({ role: 'DRIVER' }, { $set: { name: 'Anand' } });
       }
 
