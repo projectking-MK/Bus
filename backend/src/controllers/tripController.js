@@ -44,7 +44,15 @@ export const startTrip = async (req, res) => {
     const startLon = longitude !== undefined && longitude !== null ? Number(longitude) : bus.defaultCenterLongitude;
     const radius = geofenceRadius ? Number(geofenceRadius) : bus.defaultGeofenceRadius;
 
-    const tripId = `TRIP-${Date.now()}`;
+    // Detect session (Morning vs Evening)
+    let tripSession = req.body.session ? req.body.session.toUpperCase() : null;
+    if (!tripSession || !['MORNING', 'EVENING', 'SPECIAL'].includes(tripSession)) {
+      const currentHour = new Date().getHours();
+      tripSession = currentHour < 13 ? 'MORNING' : 'EVENING';
+    }
+    const sessionName = tripSession === 'MORNING' ? 'Morning Trip' : tripSession === 'EVENING' ? 'Evening Trip' : 'Special Trip';
+
+    const tripId = `TRIP-${tripSession}-${Date.now()}`;
 
     const newTrip = await BusTrip.create({
       tripId,
@@ -52,6 +60,8 @@ export const startTrip = async (req, res) => {
       driverId: req.user._id,
       startTime: new Date(),
       status: 'ACTIVE',
+      session: tripSession,
+      sessionName,
       startLatitude: startLat,
       startLongitude: startLon,
       currentLatitude: startLat,
@@ -200,14 +210,26 @@ export const getActiveTrip = async (req, res) => {
       status: { $in: ['PRESENT', 'LATE'] },
     });
 
+    let markedByMe = false;
+    let myRecord = null;
+    if (req.user && req.user.role === 'STUDENT' && req.student) {
+      myRecord = await Attendance.findOne({
+        tripId: activeTrip._id,
+        studentId: req.student._id,
+      });
+      markedByMe = !!myRecord;
+    }
+
     res.json({
       success: true,
       active: true,
       trip: activeTrip,
+      markedByMe,
+      myRecord,
       stats: {
-        totalStudents: totalStudents || 68,
+        totalStudents: totalStudents || 55,
         presentCount,
-        absentCount: Math.max(0, (totalStudents || 68) - presentCount),
+        absentCount: Math.max(0, (totalStudents || 55) - presentCount),
       },
     });
   } catch (error) {

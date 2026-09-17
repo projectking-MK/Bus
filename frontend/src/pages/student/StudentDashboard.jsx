@@ -20,6 +20,8 @@ import {
 export const StudentDashboard = () => {
   const { user, student, deviceIdentifier } = useAuth();
   const [activeTrip, setActiveTrip] = useState(null);
+  const [markedForActiveTrip, setMarkedForActiveTrip] = useState(false);
+  const [activeTripRecord, setActiveTripRecord] = useState(null);
   const [myAttendance, setMyAttendance] = useState({ history: [], stats: {} });
   const [todayRecord, setTodayRecord] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,10 +35,14 @@ export const StudentDashboard = () => {
         axiosClient.get('/api/attendance/today'),
       ]);
 
-      if (tripRes.data.success && tripRes.data.active) {
+      if (tripRes.data.success && tripRes.data.active && tripRes.data.trip) {
         setActiveTrip(tripRes.data.trip);
+        setMarkedForActiveTrip(Boolean(tripRes.data.markedByMe));
+        setActiveTripRecord(tripRes.data.myRecord || null);
       } else {
         setActiveTrip(null);
+        setMarkedForActiveTrip(false);
+        setActiveTripRecord(null);
       }
 
       if (historyRes.data.success) {
@@ -116,53 +122,76 @@ export const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Today's Status Banner & Call to Action */}
+      {/* Session / Active Trip Status Banner & Call to Action */}
       <div className="mb-6">
-        {isPresentToday ? (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {activeTrip ? (
+          markedForActiveTrip ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-emerald-900">
+                    Attendance Marked for {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip
+                  </h3>
+                  <p className="text-xs text-emerald-700 mt-0.5">
+                    Verified on {activeTrip.busId?.busNumber || 'BUS-01'} • Distance: {activeTripRecord?.distanceMeters || 0}m
+                  </p>
+                </div>
+              </div>
+              <StatusBadge status="PRESENT" />
+            </div>
+          ) : (
+            <div className="bg-white border-2 border-indigo-500 rounded-3xl p-6 shadow-lg shadow-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center space-x-2 text-indigo-600 mb-1">
+                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip In Progress
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {activeTrip.sessionName || 'Trip'} Attendance is Open!
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Scan the dynamic QR displayed on the bus dashboard to mark your presence.
+                </p>
+              </div>
+
+              <Link
+                to="/student/scan"
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-indigo-200 flex items-center justify-center space-x-2"
+              >
+                <QrCode className="w-5 h-5" />
+                <span>Scan QR Code</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          )
+        ) : isPresentToday ? (
+          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                <CheckCircle2 className="w-7 h-7" />
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-emerald-900">Attendance Marked Today</h3>
-                <p className="text-xs text-emerald-700 mt-0.5">
-                  Verified at {new Date(todayRecord.markedAt).toLocaleTimeString()} • Distance from bus: {todayRecord.distanceMeters || 0}m
+                <h3 className="text-base font-bold text-slate-800">Trip Ended • Attendance Closed</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Last marked at {new Date(todayRecord.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Waiting for next bus trip to start.
                 </p>
               </div>
             </div>
-            <StatusBadge status={todayRecord.status} />
-          </div>
-        ) : activeTrip ? (
-          <div className="bg-white border-2 border-indigo-500 rounded-3xl p-6 shadow-lg shadow-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center space-x-2 text-indigo-600 mb-1">
-                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
-                <span className="text-xs font-bold uppercase tracking-wider">Bus Trip In Progress</span>
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">
-                Attendance is Currently Open!
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Scan the dynamic QR displayed on the bus dashboard to mark your presence.
-              </p>
-            </div>
-
-            <Link
-              to="/student/scan"
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-indigo-200 flex items-center justify-center space-x-2"
-            >
-              <QrCode className="w-5 h-5" />
-              <span>Scan QR Code</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-200 text-slate-700">
+              Trip Completed
+            </span>
           </div>
         ) : (
           <div className="bg-white rounded-3xl border border-slate-200 p-6 text-center text-slate-500">
             <Clock className="w-8 h-8 mx-auto text-slate-400 mb-2" />
             <h3 className="text-sm font-bold text-slate-800">Attendance is Currently Closed</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              The driver has not started today's bus trip yet. Check back when boarding the bus.
+              The driver has not started a bus trip yet or the trip has ended. Check back when boarding the bus.
             </p>
           </div>
         )}

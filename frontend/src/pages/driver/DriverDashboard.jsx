@@ -29,6 +29,9 @@ export const DriverDashboard = () => {
   const [locationStatus, setLocationStatus] = useState('Standby');
   const [currentCoords, setCurrentCoords] = useState(null);
   const [error, setError] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(() => {
+    return new Date().getHours() < 13 ? 'MORNING' : 'EVENING';
+  });
 
   const locationWatchRef = useRef(null);
 
@@ -44,6 +47,7 @@ export const DriverDashboard = () => {
           fetchAttendees();
         } else {
           setActiveTrip(null);
+          setAttendees([]);
         }
       }
     } catch (err) {
@@ -129,6 +133,7 @@ export const DriverDashboard = () => {
       }
 
       const res = await axiosClient.post('/api/trips/start', {
+        session: selectedSession,
         latitude: initialLat,
         longitude: initialLon,
         geofenceRadius: 100,
@@ -136,6 +141,8 @@ export const DriverDashboard = () => {
 
       if (res.data.success) {
         setActiveTrip(res.data.trip);
+        setStats({ totalStudents: 55, presentCount: 0, absentCount: 55 });
+        setAttendees([]);
         fetchActiveTrip();
       }
     } catch (err) {
@@ -157,7 +164,10 @@ export const DriverDashboard = () => {
       if (res.data.success) {
         setActiveTrip(null);
         setAttendees([]);
-        alert(`Trip Completed!\n\nPresent: ${res.data.summary.presentCount}\nAbsent: ${res.data.summary.absentCount}`);
+        setStats({ totalStudents: 55, presentCount: 0, absentCount: 55 });
+        // Auto toggle next session
+        setSelectedSession((prev) => (prev === 'MORNING' ? 'EVENING' : 'MORNING'));
+        alert(`Trip Completed!\n\nAttendance is now CLOSED.\nPresent: ${res.data.summary.presentCount}\nAbsent: ${res.data.summary.absentCount}`);
         fetchActiveTrip();
       }
     } catch (err) {
@@ -179,14 +189,51 @@ export const DriverDashboard = () => {
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
               Driver Trip Console
             </h1>
+            {activeTrip && (
+              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center space-x-1.5 ${
+                activeTrip.session === 'MORNING' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-indigo-100 text-indigo-900 border border-indigo-300'
+              }`}>
+                <span>{activeTrip.session === 'MORNING' ? '🌅' : '🌆'}</span>
+                <span>{activeTrip.sessionName || 'Active Trip'}</span>
+              </span>
+            )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
             Driver: <strong className="text-slate-700">{user?.name}</strong> • Bus No: <strong className="text-indigo-600 font-mono">BUS-01</strong>
           </p>
         </div>
 
-        {/* Start / Stop Controls */}
-        <div className="flex items-center space-x-3">
+        {/* Start / Stop Controls & Session Selector */}
+        <div className="flex flex-wrap items-center gap-3">
+          {!activeTrip && (
+            <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setSelectedSession('MORNING')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                  selectedSession === 'MORNING'
+                    ? 'bg-white text-amber-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>🌅</span>
+                <span>Morning</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedSession('EVENING')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 ${
+                  selectedSession === 'EVENING'
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <span>🌆</span>
+                <span>Evening</span>
+              </button>
+            </div>
+          )}
+
           {activeTrip ? (
             <button
               onClick={handleStopTrip}
@@ -203,7 +250,7 @@ export const DriverDashboard = () => {
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-emerald-200 flex items-center space-x-2 disabled:opacity-50"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>{actionLoading ? 'Starting...' : 'Start Today\'s Trip'}</span>
+              <span>{actionLoading ? 'Starting...' : `Start ${selectedSession === 'MORNING' ? 'Morning' : 'Evening'} Trip`}</span>
             </button>
           )}
         </div>

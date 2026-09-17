@@ -8,44 +8,14 @@ import { generateAttendanceExcelWorkbook } from '../utils/excelExporter.js';
 
 export const getDashboardSummary = async (req, res) => {
   try {
-    const totalStudents = await Student.countDocuments();
-    const activeStudents = await Student.countDocuments({ accountStatus: 'ACTIVE' });
-    const registeredDevices = await Student.countDocuments({ deviceRegistrationStatus: true });
+    const { tripId } = req.query;
 
-    // Today's range
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
+    // 1. Fetch active enrolled students (55 students)
+    const allStudents = await Student.find({ accountStatus: 'ACTIVE' }).sort({ rollNumber: 1 });
+    const totalStudents = allStudents.length || 55;
+    const activeStudents = allStudents.length || 55;
+    const registeredDevices = allStudents.filter((s) => s.deviceRegistrationStatus).length;
 
-    const todayAttendance = await Attendance.find({
-      markedAt: { $gte: startOfDay, $lte: endOfDay },
-    }).populate('studentId', 'name rollNumber gender year department');
-
-    const presentToday = todayAttendance.filter((a) => a.status === 'PRESENT').length;
-    const lateToday = todayAttendance.filter((a) => a.status === 'LATE').length;
-    const absentToday = Math.max(0, totalStudents - (presentToday + lateToday));
-
-    // Gender breakdown for today
-    const presentStudentIds = new Set();
-    let boysPresent = 0;
-    let girlsPresent = 0;
-
-    todayAttendance.forEach((att) => {
-      if (att.status === 'PRESENT' || att.status === 'LATE') {
-        const s = att.studentId;
-        if (s) {
-          presentStudentIds.add(s._id.toString());
-          if ((s.gender || 'Male').toLowerCase() === 'male') {
-            boysPresent++;
-          } else {
-            girlsPresent++;
-          }
-        }
-      }
-    });
-
-    const allStudents = await Student.find({}, 'gender attendancePercentage');
     let totalBoys = 0;
     let totalGirls = 0;
     allStudents.forEach((s) => {
@@ -53,36 +23,104 @@ export const getDashboardSummary = async (req, res) => {
       else totalGirls++;
     });
 
-    const boysAbsent = Math.max(0, totalBoys - boysPresent);
-    const girlsAbsent = Math.max(0, totalGirls - girlsPresent);
-
-    // Calculate aggregate attendance percentage across students
     const avgAttendance = allStudents.length > 0
       ? Math.round(allStudents.reduce((acc, s) => acc + (s.attendancePercentage || 0), 0) / allStudents.length)
       : 0;
 
-    // Active trip status
-    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' })
-      .populate('busId', 'busNumber routeName capacity defaultGeofenceRadius')
-      .populate('driverId', 'name email');
+    // 2. Fetch list of recent trips for dropdown
+    const allTrips = await BusTrip.find()
+      .populate('busId', 'busNumber routeName')
+      .populate('driverId', 'name')
+      .sort({ createdAt: -1 })
+      .limit(30);
 
-    let tripPresentCount = 0;
-    if (activeTrip) {
-      tripPresentCount = await Attendance.countDocuments({
-        tripId: activeTrip._id,
-        status: { $in: ['PRESENT', 'LATE'] },
-      });
+    // 3. Determine selected trip (specified tripId -> active trip -> latest trip)
+    let selectedTrip = null;
+    if (tripId) {
+      selectedTrip = allTrips.find((t) => t._id.toString() === tripId) || (await BusTrip.findById(tripId).populate('busId driverId'));
+    } else {
+      selectedTrip = allTrips.find((t) => t.status === 'ACTIVE') || allTrips[0] || null;
     }
 
-    // Recent 10 attendance records
-    const recentActivity = await Attendance.find()
-      .populate('studentId', 'rollNumber name department gender year')
-      .populate('tripId', 'tripId')
-      .sort({ markedAt: -1 })
-      .limit(10);
+    // 4. Fetch attendance records for the selected trip
+    let tripAttendance = [];
+    if (selectedTrip) {
+      tripAttendance = await Attendance.find({
+        tripId: selectedTrip._id,
+      }).populate('studentId', 'name rollNumber gender year department phone');
+    }
+
+    // 5. Compute trip-specific metrics
+    const presentRecords = tripAttendance.filter((a) => a.status === 'PRESENT' || a.status === 'LATE');
+    const lateRecords = tripAttendance.filter((a) => a.status === 'LATE');
+    const presentStudentIds = new Set(presentRecords.map((a) => a.studentId?._id?.toString()).filter(Boolean));
+
+    let boysPresent = 0;
+    let girlsPresent = 0;
+    presentRecords.forEach((att) => {
+      const s = att.studentId;
+      if (s) {
+        if ((s.gender || 'Male').toLowerCase() === 'male') boysPresent++;
+        else girlsPresent++;
+      }
+    });
+
+    const presentCount = presentRecords.length;
+    const lateCount = lateRecords.length;
+    const absentCount = Math.max(0, totalStudents - presentCount);
+    const boysAbsent = Math.max(0, totalBoys - boysPresent);
+    const girlsAbsent = Math.max(0, totalGirls - girlsPresent);
+
+    // 6. Build exact absent student list for this trip with Name, Roll, Dept & Year
+    const absentStudents = allStudents
+      .filter((s) => !presentStudentIds.has(s._id.toString()))
+      .map((s) => ({
+        id: s._id,
+        name: s.name,
+        rollNumber: s.rollNumber,
+        gender: s.gender || 'Male',
+        department: s.department,
+        year: s.year,
+        phone: s.phone,
+      }));
+
+    // Active trip status for top status banner
+    const activeTrip = allTrips.find((t) => t.status === 'ACTIVE') || null;
+
+    // Recent 10 scans for this trip
+    const recentActivity = tripAttendance.slice(0, 10);
 
     res.json({
       success: true,
+      selectedTrip: selectedTrip
+        ? {
+            id: selectedTrip._id,
+            tripId: selectedTrip.tripId,
+            session: selectedTrip.session || 'MORNING',
+            sessionName: selectedTrip.sessionName || (selectedTrip.session === 'MORNING' ? 'Morning Trip' : 'Evening Trip'),
+            status: selectedTrip.status,
+            busNumber: selectedTrip.busId?.busNumber || 'BUS-01',
+            routeName: selectedTrip.busId?.routeName || 'Main Campus Route 4',
+            driverName: selectedTrip.driverId?.name || 'Driver',
+            startTime: selectedTrip.startTime,
+            endTime: selectedTrip.endTime,
+            geofenceRadius: selectedTrip.geofenceRadius,
+            currentLatitude: selectedTrip.currentLatitude,
+            currentLongitude: selectedTrip.currentLongitude,
+            presentCount,
+            absentCount,
+          }
+        : null,
+      allTrips: allTrips.map((t) => ({
+        id: t._id,
+        tripId: t.tripId,
+        session: t.session || 'MORNING',
+        sessionName: t.sessionName || (t.session === 'MORNING' ? 'Morning Trip' : 'Evening Trip'),
+        status: t.status,
+        startTime: t.startTime,
+        endTime: t.endTime,
+        busNumber: t.busId?.busNumber || 'BUS-01',
+      })),
       stats: {
         totalStudents,
         totalBoys,
@@ -93,26 +131,32 @@ export const getDashboardSummary = async (req, res) => {
         girlsAbsent,
         activeStudents,
         registeredDevices,
-        presentToday,
-        absentToday,
-        lateToday,
+        presentCount,
+        absentCount,
+        lateCount,
+        presentToday: presentCount,
+        absentToday: absentCount,
+        lateToday: lateCount,
         averageAttendancePercentage: avgAttendance,
       },
       activeTrip: activeTrip
         ? {
             id: activeTrip._id,
             tripId: activeTrip.tripId,
-            busNumber: activeTrip.busId?.busNumber,
+            session: activeTrip.session || 'MORNING',
+            sessionName: activeTrip.sessionName || 'Morning Trip',
+            busNumber: activeTrip.busId?.busNumber || 'BUS-01',
             routeName: activeTrip.busId?.routeName,
             driverName: activeTrip.driverId?.name,
             startTime: activeTrip.startTime,
             currentLatitude: activeTrip.currentLatitude,
             currentLongitude: activeTrip.currentLongitude,
             geofenceRadius: activeTrip.geofenceRadius,
-            presentCount: tripPresentCount,
-            absentCount: Math.max(0, totalStudents - tripPresentCount),
+            presentCount: activeTrip._id.toString() === selectedTrip?._id?.toString() ? presentCount : 0,
+            absentCount: activeTrip._id.toString() === selectedTrip?._id?.toString() ? absentCount : totalStudents,
           }
         : null,
+      absentStudents,
       recentActivity,
     });
   } catch (error) {
@@ -214,14 +258,28 @@ export const exportAttendanceExcel = async (req, res) => {
     if (tripId) filter.tripId = tripId;
 
     let selectedDate = new Date();
-    if (date) {
-      selectedDate = new Date(date);
+    let trip = null;
+
+    if (tripId) {
+      trip = await BusTrip.findById(tripId).populate('busId driverId');
+    } else {
+      trip = await BusTrip.findOne({ status: 'ACTIVE' }).populate('busId driverId');
+      if (!trip) {
+        trip = await BusTrip.findOne().sort({ createdAt: -1 }).populate('busId driverId');
+      }
     }
-    const startOfDay = new Date(selectedDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(selectedDate);
-    endOfDay.setHours(23, 59, 59, 999);
-    filter.markedAt = { $gte: startOfDay, $lte: endOfDay };
+
+    if (trip) {
+      filter.tripId = trip._id;
+      selectedDate = trip.startTime || new Date();
+    } else if (date) {
+      selectedDate = new Date(date);
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      filter.markedAt = { $gte: startOfDay, $lte: endOfDay };
+    }
 
     // 1. Fetch all students enrolled (55 students)
     const allStudents = await Student.find({ accountStatus: 'ACTIVE' }).sort({ rollNumber: 1 });
@@ -232,21 +290,11 @@ export const exportAttendanceExcel = async (req, res) => {
       .populate('tripId', 'tripId status startTime')
       .sort({ markedAt: -1 });
 
-    // 3. Fetch trip/bus details
-    let trip = null;
-    if (tripId) {
-      trip = await BusTrip.findById(tripId).populate('busId driverId');
-    } else {
-      trip = await BusTrip.findOne({ status: 'ACTIVE' }).populate('busId driverId');
-      if (!trip) {
-        trip = await BusTrip.findOne().sort({ createdAt: -1 }).populate('busId driverId');
-      }
-    }
-
     const bus = await Bus.findOne({ isActive: true });
 
     const tripInfo = {
       tripId: trip?.tripId || 'TRIP-DEMO',
+      sessionName: trip?.sessionName || (trip?.session === 'MORNING' ? 'Morning Trip' : 'Evening Trip'),
       busNumber: trip?.busId?.busNumber || bus?.busNumber || 'BUS-01',
       routeName: trip?.busId?.routeName || bus?.routeName || 'Main Campus Route 4',
       date: selectedDate,
@@ -258,8 +306,9 @@ export const exportAttendanceExcel = async (req, res) => {
       trip: tripInfo,
     });
 
+    const sessionSuffix = trip?.session ? `_${trip.session}` : '';
     const dateStr = selectedDate.toISOString().split('T')[0];
-    const filename = `Bus_Attendance_Report_${dateStr}.xlsx`;
+    const filename = `Bus_Attendance_Report_${dateStr}${sessionSuffix}.xlsx`;
 
     res.setHeader(
       'Content-Type',

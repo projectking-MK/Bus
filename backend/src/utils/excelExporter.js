@@ -80,7 +80,8 @@ export const generateAttendanceExcelWorkbook = async ({ allStudents, attendanceR
   // Subtitle Metadata
   wsSummary.mergeCells('A2:G2');
   const subCell = wsSummary.getCell('A2');
-  subCell.value = `Bus: ${trip?.busNumber || 'BUS-01'} | Route: ${trip?.routeName || 'Main Campus Route 4'} | Date: ${reportDate} | Trip: ${trip?.tripId || 'ACTIVE'}`;
+  const sessionText = trip?.sessionName ? ` | Session: ${trip.sessionName}` : '';
+  subCell.value = `Bus: ${trip?.busNumber || 'BUS-01'} | Route: ${trip?.routeName || 'Main Campus Route 4'}${sessionText} | Date: ${reportDate} | Trip: ${trip?.tripId || 'ACTIVE'}`;
   subCell.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FFFFFFFF' } };
   subCell.alignment = { vertical: 'middle', horizontal: 'center' };
   subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };

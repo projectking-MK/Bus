@@ -521,3 +521,82 @@ test('16. Admin: Export Excel contains Boys/Girls attendance report and absent l
   const buffer = await res.arrayBuffer();
   assert.ok(buffer.byteLength > 1000, 'Excel file buffer should be non-empty');
 });
+
+test('17. Trip Lifecycle: Morning Trip -> Stop -> Evening Trip starts with 0/default count -> mark fresh attendance -> Admin queries per trip', async () => {
+  // 1. Verify attendance is closed right now (since previous trip stopped in test 15)
+  const closedRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: 'dummy',
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 12,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(closedRes.status, 400);
+  assert.match(closedRes.body.message, /Attendance is currently closed/);
+
+  // 2. Driver starts an EVENING trip
+  const eveningTripRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'EVENING',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 100,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(eveningTripRes.status, 201);
+  assert.equal(eveningTripRes.body.trip.session, 'EVENING');
+  assert.equal(eveningTripRes.body.trip.sessionName, 'Evening Trip');
+  const eveningTripId = eveningTripRes.body.trip._id;
+  const eveningQR = eveningTripRes.body.initialQR.token;
+
+  // 3. Verify Active Trip endpoint returns clean counts (0 present)
+  const activeRes = await makeRequest('GET', '/api/trips/active', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  assert.equal(activeRes.body.active, true);
+  assert.equal(activeRes.body.stats.presentCount, 0);
+
+  // 4. Student 1 marks attendance on the EVENING trip using their registered device
+  const eveningAttendanceRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: eveningQR,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(eveningAttendanceRes.status, 201);
+  assert.equal(eveningAttendanceRes.body.success, true);
+
+  // 5. Admin queries dashboard for the EVENING trip specifically
+  const eveningDashboardRes = await makeRequest(
+    'GET',
+    `/api/admin/dashboard?tripId=${eveningTripId}`,
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(eveningDashboardRes.status, 200);
+  assert.equal(eveningDashboardRes.body.stats.presentCount, 1);
+  assert.equal(eveningDashboardRes.body.selectedTrip.session, 'EVENING');
+  assert.ok(eveningDashboardRes.body.allTrips.length >= 2);
+
+  // 6. Stop the Evening Trip
+  const stopEveningRes = await makeRequest('POST', '/api/trips/stop', {}, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  assert.equal(stopEveningRes.status, 200);
+  assert.equal(stopEveningRes.body.summary.presentCount, 1);
+});
+

@@ -21,13 +21,20 @@ export const AdminDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedTripId, setSelectedTripId] = useState('');
+  const [activeTab, setActiveTab] = useState('present'); // 'present' | 'absent'
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = async (tripIdOverride) => {
     try {
       setLoading(true);
-      const res = await axiosClient.get('/api/admin/dashboard');
+      const targetId = tripIdOverride !== undefined ? tripIdOverride : selectedTripId;
+      const url = targetId ? `/api/admin/dashboard?tripId=${targetId}` : '/api/admin/dashboard';
+      const res = await axiosClient.get(url);
       if (res.data.success) {
         setData(res.data);
+        if (!selectedTripId && res.data.selectedTrip) {
+          setSelectedTripId(res.data.selectedTrip.id);
+        }
       }
     } catch (err) {
       setError('Failed to fetch dashboard metrics.');
@@ -38,29 +45,34 @@ export const AdminDashboard = () => {
 
   useEffect(() => {
     fetchDashboard();
-    const interval = setInterval(fetchDashboard, 15000); // Poll every 15s for live counts
+    const interval = setInterval(() => {
+      fetchDashboard();
+    }, 15000); // Poll every 15s for live counts
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedTripId]);
 
   const stats = data?.stats || {};
+  const selectedTrip = data?.selectedTrip;
+  const allTrips = data?.allTrips || [];
   const activeTrip = data?.activeTrip;
   const recentActivity = data?.recentActivity || [];
+  const absentStudents = data?.absentStudents || [];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
             Admin Attendance Overview
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            College Bus #BUS-01 • Real-time Monitoring & Verification
+            College Bus #BUS-01 • Real-time Monitoring & Separate Trip Records
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button
-            onClick={fetchDashboard}
+            onClick={() => fetchDashboard()}
             disabled={loading}
             className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-medium transition shadow-sm flex items-center space-x-2"
           >
@@ -68,7 +80,7 @@ export const AdminDashboard = () => {
             <span>Refresh</span>
           </button>
           <a
-            href={`${import.meta.env.VITE_API_URL || ''}/api/admin/export-excel`}
+            href={`${import.meta.env.VITE_API_URL || ''}/api/admin/export-excel${selectedTrip ? `?tripId=${selectedTrip.id}` : ''}`}
             download
             className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-2"
           >
@@ -76,12 +88,58 @@ export const AdminDashboard = () => {
             <span>Export Excel (.xlsx)</span>
           </a>
           <a
-            href={`${import.meta.env.VITE_API_URL || ''}/api/admin/export`}
+            href={`${import.meta.env.VITE_API_URL || ''}/api/admin/export${selectedTrip ? `?tripId=${selectedTrip.id}` : ''}`}
             download
             className="px-3.5 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-sm font-medium transition flex items-center space-x-2"
           >
             <span>CSV</span>
           </a>
+        </div>
+      </div>
+
+      {/* Trip Selector & Session Status Bar */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3">
+          <div className={`p-2.5 rounded-xl ${selectedTrip?.session === 'MORNING' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
+            <Bus className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Selected Session:</span>
+              {selectedTrip && (
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold uppercase ${
+                  selectedTrip.status === 'ACTIVE' 
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 animate-pulse' 
+                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                }`}>
+                  {selectedTrip.status === 'ACTIVE' ? '🟢 ACTIVE IN PROGRESS' : '⚪ COMPLETED'}
+                </span>
+              )}
+            </div>
+            <h2 className="text-base font-bold text-slate-900 mt-0.5">
+              {selectedTrip 
+                ? `${selectedTrip.session === 'MORNING' ? '🌅' : '🌆'} ${selectedTrip.sessionName} (${selectedTrip.busNumber})` 
+                : 'No Trip Selected'}
+            </h2>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <label className="text-xs font-semibold text-slate-600 flex-shrink-0">View Records For:</label>
+          <select
+            value={selectedTrip?.id || selectedTripId}
+            onChange={(e) => {
+              setSelectedTripId(e.target.value);
+              fetchDashboard(e.target.value);
+            }}
+            className="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+          >
+            {allTrips.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip • {new Date(t.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} ({new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) [{t.status}]
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -298,71 +356,150 @@ export const AdminDashboard = () => {
         </Link>
       </div>
 
-      {/* Recent Attendance Activity Table */}
+      {/* Attendance & Absentee Rosters for Selected Trip */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Recent Attendance Activity</h3>
-            <p className="text-xs text-slate-500">Live feed of students marking attendance</p>
+        <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Tab Switcher */}
+          <div className="flex items-center space-x-2 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setActiveTab('present')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                activeTab === 'present'
+                  ? 'bg-white text-emerald-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <UserCheck className="w-4 h-4 text-emerald-600" />
+              <span>Boarded Students ({stats.presentCount || 0})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('absent')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-2 ${
+                activeTab === 'absent'
+                  ? 'bg-white text-rose-700 shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <UserX className="w-4 h-4 text-rose-600" />
+              <span>Absent Students ({stats.absentCount || 0})</span>
+            </button>
           </div>
+
           <Link
             to="/admin/attendance"
             className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
           >
-            View All Logs →
+            Detailed Security Logs →
           </Link>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
-              <tr>
-                <th className="py-3 px-6">Roll Number</th>
-                <th className="py-3 px-6">Student Name</th>
-                <th className="py-3 px-6">Department</th>
-                <th className="py-3 px-6">Status</th>
-                <th className="py-3 px-6">Distance from Bus</th>
-                <th className="py-3 px-6">Device ID</th>
-                <th className="py-3 px-6">Marked At</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {recentActivity.length === 0 ? (
+        {activeTab === 'present' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-400">
-                    No attendance records recorded yet today.
-                  </td>
+                  <th className="py-3 px-6">Roll Number</th>
+                  <th className="py-3 px-6">Student Name</th>
+                  <th className="py-3 px-6">Department</th>
+                  <th className="py-3 px-6">Status</th>
+                  <th className="py-3 px-6">Distance from Bus</th>
+                  <th className="py-3 px-6">Device ID</th>
+                  <th className="py-3 px-6">Marked At</th>
                 </tr>
-              ) : (
-                recentActivity.map((rec) => (
-                  <tr key={rec._id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
-                      {rec.studentId?.rollNumber || 'N/A'}
-                    </td>
-                    <td className="py-3.5 px-6 font-semibold text-slate-900">
-                      {rec.studentId?.name || 'Unknown Student'}
-                    </td>
-                    <td className="py-3.5 px-6 text-slate-600">
-                      {rec.studentId?.department || 'N/A'}
-                    </td>
-                    <td className="py-3.5 px-6">
-                      <StatusBadge status={rec.status} />
-                    </td>
-                    <td className="py-3.5 px-6 font-mono text-slate-700">
-                      {rec.distanceMeters !== undefined ? `${rec.distanceMeters}m` : '0m'}
-                    </td>
-                    <td className="py-3.5 px-6 font-mono text-[11px] text-slate-500 truncate max-w-[140px]">
-                      {rec.deviceId}
-                    </td>
-                    <td className="py-3.5 px-6 text-slate-500 whitespace-nowrap">
-                      {new Date(rec.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recentActivity.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-8 text-center text-slate-400">
+                      No attendance records for this trip session yet.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  recentActivity.map((rec) => (
+                    <tr key={rec._id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                        {rec.studentId?.rollNumber || 'N/A'}
+                      </td>
+                      <td className="py-3.5 px-6 font-semibold text-slate-900">
+                        {rec.studentId?.name || 'Unknown Student'}
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-600">
+                        {rec.studentId?.department || 'N/A'}
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <StatusBadge status={rec.status} />
+                      </td>
+                      <td className="py-3.5 px-6 font-mono text-slate-700">
+                        {rec.distanceMeters !== undefined ? `${rec.distanceMeters}m` : '0m'}
+                      </td>
+                      <td className="py-3.5 px-6 font-mono text-[11px] text-slate-500 truncate max-w-[140px]">
+                        {rec.deviceId}
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-500 whitespace-nowrap">
+                        {new Date(rec.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-rose-50/60 text-rose-700 uppercase tracking-wider font-semibold border-b border-rose-100">
+                <tr>
+                  <th className="py-3 px-6">Roll Number</th>
+                  <th className="py-3 px-6">Student Name</th>
+                  <th className="py-3 px-6">Year</th>
+                  <th className="py-3 px-6">Department</th>
+                  <th className="py-3 px-6">Gender</th>
+                  <th className="py-3 px-6">Attendance Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {absentStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="py-8 text-center text-emerald-600 font-semibold">
+                      🎉 All 55 students were present on this trip! Zero absentees.
+                    </td>
+                  </tr>
+                ) : (
+                  absentStudents.map((st) => (
+                    <tr key={st.id || st.rollNumber} className="hover:bg-rose-50/30 transition">
+                      <td className="py-3.5 px-6 font-mono font-bold text-slate-800">
+                        {st.rollNumber}
+                      </td>
+                      <td className="py-3.5 px-6 font-semibold text-slate-900">
+                        {st.name}
+                      </td>
+                      <td className="py-3.5 px-6 font-medium text-slate-600">
+                        {st.year || 'N/A'}
+                      </td>
+                      <td className="py-3.5 px-6 text-slate-600">
+                        {st.department || 'N/A'}
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          st.gender?.toLowerCase() === 'male' ? 'bg-indigo-50 text-indigo-700' : 'bg-pink-50 text-pink-700'
+                        }`}>
+                          {st.gender}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-6">
+                        <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                          ABSENT
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

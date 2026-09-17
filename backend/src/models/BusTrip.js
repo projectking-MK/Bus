@@ -32,6 +32,16 @@ const busTripSchema = new mongoose.Schema(
       default: 'NOT_STARTED',
       index: true,
     },
+    session: {
+      type: String,
+      enum: ['MORNING', 'EVENING', 'SPECIAL'],
+      default: 'MORNING',
+      index: true,
+    },
+    sessionName: {
+      type: String,
+      default: 'Morning Trip',
+    },
     startLatitude: {
       type: Number,
       default: null,
