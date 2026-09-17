@@ -155,8 +155,11 @@ export const markAttendance = async (req, res) => {
       });
     }
 
-    // 11. GPS Accuracy verification (Reject low accuracy / cell tower approximations > 100m)
-    if (isNaN(sAccuracy) || sAccuracy > 100) {
+    const allowedRadius = activeTrip.geofenceRadius || 100;
+    const maxAccuracy = Math.max(100, Math.min(allowedRadius * 0.1, 1000));
+
+    // 11. GPS Accuracy verification (Reject low accuracy / cell tower approximations)
+    if (isNaN(sAccuracy) || sAccuracy > maxAccuracy) {
       return res.status(400).json({
         success: false,
         message: 'GPS accuracy is too low. Please enable high-accuracy location.',
@@ -181,7 +184,8 @@ export const markAttendance = async (req, res) => {
       sAccuracy,
       busLat,
       busLon,
-      activeTrip.geofenceRadius || 100
+      allowedRadius,
+      maxAccuracy
     );
 
     if (!geofenceResult.isInside) {
@@ -191,7 +195,7 @@ export const markAttendance = async (req, res) => {
         targetStudentId: student._id,
         details: {
           distance: geofenceResult.distanceMeters,
-          allowedRadius: activeTrip.geofenceRadius,
+          allowedRadius,
           studentLat: sLat,
           studentLon: sLon,
           busLat,
@@ -204,6 +208,7 @@ export const markAttendance = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: geofenceResult.error || 'You are outside the permitted bus area.',
+        detail: geofenceResult.detail,
         distanceMeters: geofenceResult.distanceMeters,
       });
     }

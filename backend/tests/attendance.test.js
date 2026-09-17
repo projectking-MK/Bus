@@ -665,5 +665,107 @@ test('Admin can export Boys and Girls credentials in Excel and PDF formats', asy
   assert.equal(girlsPdfRes.status, 200);
 });
 
+test('GPS Range Security: validates 100m, 3km, and 100km geofence boundaries', async () => {
+  // 1. Validate geofence helper with 100m range
+  const range100Inside = validateGeofence(13.0827, 80.2707, 15, 13.0830, 80.2707, 100);
+  assert.equal(range100Inside.isInside, true);
+  const range100Outside = validateGeofence(13.0827, 80.2707, 15, 13.0850, 80.2707, 100);
+  assert.equal(range100Outside.isInside, false);
+
+  // 2. Validate geofence helper with 3000m (3km) range
+  const dist1500Check = validateGeofence(13.0827, 80.2707, 25, 13.0960, 80.2707, 3000);
+  assert.equal(dist1500Check.isInside, true);
+  const dist4500Check = validateGeofence(13.0827, 80.2707, 25, 13.1230, 80.2707, 3000);
+  assert.equal(dist4500Check.isInside, false);
+  assert.equal(dist4500Check.error, 'You are outside the permitted bus area.');
+
+  // 3. Validate geofence helper with 100000m (100km) range
+  const dist50kmCheck = validateGeofence(13.0827, 80.2707, 50, 13.5327, 80.2707, 100000);
+  assert.equal(dist50kmCheck.isInside, true);
+  const dist120kmCheck = validateGeofence(13.0827, 80.2707, 50, 14.1627, 80.2707, 100000);
+  assert.equal(dist120kmCheck.isInside, false);
+
+  // 4. Start trip with 3000m (3km) range selection
+  const tripRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      busId: testBus._id,
+      session: 'SPECIAL',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 3000,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(tripRes.status, 201);
+  assert.equal(tripRes.body.trip.geofenceRadius, 3000);
+  const specialQR = tripRes.body.initialQR.token;
+
+  // 5. Student 1 is ~550m away (lat 13.0877): outside 100m, but INSIDE 3000m (3km)!
+  const attendResInside3k = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: specialQR,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0877,
+      longitude: 80.2707,
+      gpsAccuracy: 20,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(attendResInside3k.status, 201);
+  assert.equal(attendResInside3k.body.success, true);
+
+  // 6. Student 2 is ~4500m away (lat 13.1230): OUTSIDE 3000m!
+  const attendResOutside3k = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: specialQR,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.1230,
+      longitude: 80.2707,
+      gpsAccuracy: 20,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+  assert.equal(attendResOutside3k.status, 400);
+  assert.equal(attendResOutside3k.body.message, 'You are outside the permitted bus area.');
+
+  // 7. Update trip range to 100000m (100km)
+  const patchRange100kRes = await makeRequest(
+    'PATCH',
+    '/api/trips/range',
+    { geofenceRadius: 100000 },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(patchRange100kRes.status, 200);
+  assert.equal(patchRange100kRes.body.geofenceRadius, 100000);
+
+  // 8. Now Student 2 at ~4500m away scans again: now accepted because range is 100km!
+  const attendResInside100k = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: specialQR,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.1230,
+      longitude: 80.2707,
+      gpsAccuracy: 20,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+  assert.equal(attendResInside100k.status, 201);
+  assert.equal(attendResInside100k.body.success, true);
+
+  // 9. Stop the trip
+  await makeRequest('POST', '/api/trips/stop', {}, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+});
+
+
 
 

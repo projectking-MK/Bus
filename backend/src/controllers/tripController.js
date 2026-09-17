@@ -243,7 +243,7 @@ export const getActiveTrip = async (req, res) => {
 
 export const updateTripLocation = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, geofenceRadius } = req.body;
 
     if (latitude === undefined || longitude === undefined) {
       return res.status(400).json({
@@ -262,6 +262,9 @@ export const updateTripLocation = async (req, res) => {
 
     activeTrip.currentLatitude = Number(latitude);
     activeTrip.currentLongitude = Number(longitude);
+    if (geofenceRadius) {
+      activeTrip.geofenceRadius = Number(geofenceRadius);
+    }
     activeTrip.lastLocationUpdate = new Date();
     await activeTrip.save();
 
@@ -271,6 +274,7 @@ export const updateTripLocation = async (req, res) => {
       currentLocation: {
         latitude: activeTrip.currentLatitude,
         longitude: activeTrip.currentLongitude,
+        geofenceRadius: activeTrip.geofenceRadius,
         updatedAt: activeTrip.lastLocationUpdate,
       },
     });
@@ -278,6 +282,45 @@ export const updateTripLocation = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update bus location',
+      error: error.message,
+    });
+  }
+};
+
+export const updateTripRange = async (req, res) => {
+  try {
+    const { geofenceRadius } = req.body;
+
+    if (!geofenceRadius) {
+      return res.status(400).json({
+        success: false,
+        message: 'geofenceRadius is required.',
+      });
+    }
+
+    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
+    if (!activeTrip) {
+      return res.status(400).json({
+        success: false,
+        message: 'No active bus trip found to update geofence range.',
+      });
+    }
+
+    const radius = Number(geofenceRadius);
+    activeTrip.geofenceRadius = radius;
+    await activeTrip.save();
+
+    const rangeLabel = radius >= 1000 ? `${radius / 1000} km` : `${radius} meters`;
+
+    res.json({
+      success: true,
+      message: `Geofence range updated to ${rangeLabel} successfully.`,
+      geofenceRadius: activeTrip.geofenceRadius,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update geofence range',
       error: error.message,
     });
   }

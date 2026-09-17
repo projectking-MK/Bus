@@ -16,8 +16,37 @@ import {
   Clock,
   ShieldCheck,
   AlertCircle,
-  Navigation
+  Navigation,
+  Sliders,
+  X,
 } from 'lucide-react';
+
+const GPS_RANGE_OPTIONS = [
+  {
+    value: 100,
+    label: '100 Meter',
+    name: '100m Doorstep / Boarding Geofence',
+    badge: 'Strict Proximity',
+    color: 'emerald',
+    description: 'Students must be standing immediately beside or inside the bus (within 100 meters). Strict anti-proxy enforcement.',
+  },
+  {
+    value: 3000,
+    label: '3 Kilometer',
+    name: '3km Local Route & Stop Vicinity',
+    badge: 'Local Stops',
+    color: 'indigo',
+    description: 'Permits students waiting at nearby intersections, shelters, and designated local bus stops within a 3km radius.',
+  },
+  {
+    value: 100000,
+    label: '100 Kilometer',
+    name: '100km District Transit Corridor',
+    badge: 'Inter-City Transit',
+    color: 'purple',
+    description: 'Permits students boarding along highway stretches, long-distance college transit lines, and regional corridors within 100km.',
+  },
+];
 
 export const DriverDashboard = () => {
   const { user } = useAuth();
@@ -32,6 +61,9 @@ export const DriverDashboard = () => {
   const [selectedSession, setSelectedSession] = useState(() => {
     return new Date().getHours() < 13 ? 'MORNING' : 'EVENING';
   });
+  const [selectedGpsRange, setSelectedGpsRange] = useState(100);
+  const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
+  const [isAdjustRangeModalOpen, setIsAdjustRangeModalOpen] = useState(false);
 
   const locationWatchRef = useRef(null);
 
@@ -42,6 +74,9 @@ export const DriverDashboard = () => {
       if (res.data.success) {
         if (res.data.active && res.data.trip) {
           setActiveTrip(res.data.trip);
+          if (res.data.trip.geofenceRadius) {
+            setSelectedGpsRange(res.data.trip.geofenceRadius);
+          }
           setStats(res.data.stats || { totalStudents: 55, presentCount: 0, absentCount: 55 });
           // Also fetch attendees
           fetchAttendees();
@@ -117,9 +152,11 @@ export const DriverDashboard = () => {
     };
   }, [activeTrip?.tripId]);
 
-  const handleStartTrip = async () => {
+  const handleStartTrip = async (radiusOverride) => {
+    const chosenRadius = radiusOverride !== undefined ? radiusOverride : selectedGpsRange;
     setActionLoading(true);
     setError(null);
+    setIsGpsModalOpen(false);
     try {
       let initialLat = 13.0827;
       let initialLon = 80.2707;
@@ -136,17 +173,40 @@ export const DriverDashboard = () => {
         session: selectedSession,
         latitude: initialLat,
         longitude: initialLon,
-        geofenceRadius: 100,
+        geofenceRadius: chosenRadius,
       });
 
       if (res.data.success) {
         setActiveTrip(res.data.trip);
+        if (res.data.trip.geofenceRadius) {
+          setSelectedGpsRange(res.data.trip.geofenceRadius);
+        }
         setStats({ totalStudents: 55, presentCount: 0, absentCount: 55 });
         setAttendees([]);
         fetchActiveTrip();
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to start trip.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUpdateRange = async (newRadius) => {
+    setActionLoading(true);
+    setError(null);
+    try {
+      const res = await axiosClient.patch('/api/trips/range', {
+        geofenceRadius: newRadius,
+      });
+      if (res.data.success) {
+        setSelectedGpsRange(newRadius);
+        setActiveTrip((prev) => (prev ? { ...prev, geofenceRadius: newRadius } : null));
+        setIsAdjustRangeModalOpen(false);
+        fetchActiveTrip();
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update GPS range.');
     } finally {
       setActionLoading(false);
     }
@@ -245,7 +305,7 @@ export const DriverDashboard = () => {
             </button>
           ) : (
             <button
-              onClick={handleStartTrip}
+              onClick={() => setIsGpsModalOpen(true)}
               disabled={actionLoading}
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-emerald-200 flex items-center space-x-2 disabled:opacity-50"
             >
@@ -264,7 +324,7 @@ export const DriverDashboard = () => {
       )}
 
       {/* Real-time Status Card & Counters */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-1">
             <span className="text-xs font-bold uppercase tracking-wider">Trip Status</span>
@@ -314,6 +374,32 @@ export const DriverDashboard = () => {
               : 'GPS streaming active'}
           </p>
         </div>
+
+        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-indigo-600 mb-1">
+              <span className="text-xs font-bold uppercase tracking-wider">GPS Range</span>
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+            </div>
+            <p className="text-lg font-bold text-slate-900">
+              {activeTrip?.geofenceRadius
+                ? (activeTrip.geofenceRadius >= 1000 ? `${activeTrip.geofenceRadius / 1000} km` : `${activeTrip.geofenceRadius} m`)
+                : (selectedGpsRange >= 1000 ? `${selectedGpsRange / 1000} km` : `${selectedGpsRange} m`)}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {activeTrip ? 'Active boundary' : 'Selected boundary'}
+            </p>
+          </div>
+          {activeTrip && (
+            <button
+              onClick={() => setIsAdjustRangeModalOpen(true)}
+              className="mt-2 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 self-start"
+            >
+              <Sliders className="w-3 h-3" />
+              <span>Change Range</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Split: Dynamic QR on Left, Live Passenger List on Right */}
@@ -322,6 +408,34 @@ export const DriverDashboard = () => {
         <div className="lg:col-span-6 flex flex-col items-center justify-start">
           {activeTrip ? (
             <div className="w-full">
+              {/* GPS Geofence Range Banner */}
+              <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200/90 rounded-2xl p-3.5 mb-4 flex items-center justify-between shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <span className="p-2 rounded-xl bg-indigo-600 text-white shadow-sm flex-shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-900">GPS Validation Range:</span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-indigo-600 text-white shadow-sm">
+                        {activeTrip.geofenceRadius >= 1000 ? `${activeTrip.geofenceRadius / 1000} Kilometer` : `${activeTrip.geofenceRadius} Meter`}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Anti-proxy validates scans within <strong>{activeTrip.geofenceRadius >= 1000 ? `${activeTrip.geofenceRadius / 1000} km` : `${activeTrip.geofenceRadius} meters`}</strong> of this bus.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAdjustRangeModalOpen(true)}
+                  className="px-3 py-1.5 bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold rounded-xl shadow-sm transition flex items-center space-x-1.5 flex-shrink-0"
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Adjust</span>
+                </button>
+              </div>
+
               <div className="mb-3 text-center">
                 <h2 className="text-lg font-bold text-slate-900">Dynamic Attendance QR</h2>
                 <p className="text-xs text-slate-500">
@@ -400,6 +514,208 @@ export const DriverDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* GPS Range Selection Modal (When starting trip) */}
+      {isGpsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 transform transition-all">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
+                  <Navigation className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Select GPS Geofence Range</h3>
+                  <p className="text-xs text-slate-500">Choose permitted attendance validation radius</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGpsModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3">
+              <p className="text-xs text-slate-600 font-medium">
+                Students must be physically located within this perimeter from the bus to scan the dynamic QR code:
+              </p>
+
+              {GPS_RANGE_OPTIONS.map((opt) => {
+                const isSelected = selectedGpsRange === opt.value;
+                return (
+                  <div
+                    key={opt.value}
+                    onClick={() => setSelectedGpsRange(opt.value)}
+                    className={`cursor-pointer rounded-2xl p-4 border-2 transition-all flex items-start space-x-3.5 ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/50 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="pt-0.5">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                          isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'
+                        }`}
+                      >
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-extrabold text-sm text-slate-900">{opt.label}</span>
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              opt.value === 100
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : opt.value === 3000
+                                ? 'bg-indigo-100 text-indigo-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}
+                          >
+                            {opt.badge}
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-slate-500">
+                          {opt.value >= 1000 ? `${opt.value / 1000} km` : `${opt.value} m`}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5">{opt.name}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{opt.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsGpsModalOpen(false)}
+                disabled={actionLoading}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleStartTrip(selectedGpsRange)}
+                disabled={actionLoading}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-200 flex items-center space-x-2 disabled:opacity-50"
+              >
+                <Play className="w-4 h-4 fill-white" />
+                <span>{actionLoading ? 'Starting...' : `Confirm & Start ${selectedSession === 'MORNING' ? 'Morning' : 'Evening'} Trip`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjust GPS Range Modal (During active trip) */}
+      {isAdjustRangeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 transform transition-all">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600">
+                  <Sliders className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Adjust Geofence Perimeter</h3>
+                  <p className="text-xs text-slate-500">Live adjustment for active trip #{activeTrip?.tripId}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAdjustRangeModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-3">
+              <p className="text-xs text-slate-600 font-medium">
+                Select the new GPS range boundary for this ongoing trip:
+              </p>
+
+              {GPS_RANGE_OPTIONS.map((opt) => {
+                const isSelected = selectedGpsRange === opt.value;
+                return (
+                  <div
+                    key={opt.value}
+                    onClick={() => setSelectedGpsRange(opt.value)}
+                    className={`cursor-pointer rounded-2xl p-4 border-2 transition-all flex items-start space-x-3.5 ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/50 shadow-sm ring-2 ring-indigo-500/20'
+                        : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className="pt-0.5">
+                      <div
+                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                          isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'
+                        }`}
+                      >
+                        {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-extrabold text-sm text-slate-900">{opt.label}</span>
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              opt.value === 100
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : opt.value === 3000
+                                ? 'bg-indigo-100 text-indigo-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}
+                          >
+                            {opt.badge}
+                          </span>
+                        </div>
+                        <span className="text-xs font-mono font-bold text-slate-500">
+                          {opt.value >= 1000 ? `${opt.value / 1000} km` : `${opt.value} m`}
+                        </span>
+                      </div>
+                      <p className="text-xs font-semibold text-slate-700 mt-0.5">{opt.name}</p>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">{opt.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsAdjustRangeModalOpen(false)}
+                disabled={actionLoading}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUpdateRange(selectedGpsRange)}
+                disabled={actionLoading}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-200 flex items-center space-x-2 disabled:opacity-50"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>{actionLoading ? 'Updating...' : 'Apply GPS Range'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

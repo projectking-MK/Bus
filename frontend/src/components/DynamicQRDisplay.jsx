@@ -268,7 +268,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
           </div>
 
           <p className="text-[11px] text-slate-500 mt-2">
-            💡 Download & send to students. They have <strong>20 minutes</strong> to scan and mark attendance!
+            💡 Download & send to students. They have <strong>40 minutes</strong> to scan and mark attendance!
           </p>
 
           {/* Countdown timer & progress bar */}

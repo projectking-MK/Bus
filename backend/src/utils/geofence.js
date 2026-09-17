@@ -54,7 +54,12 @@ export const validateGeofence = (
   allowedRadius = 100,
   maxAccuracyThreshold = 100
 ) => {
-  if (accuracy === undefined || accuracy === null || accuracy > maxAccuracyThreshold) {
+  const effectiveMaxAccuracy = Math.max(
+    maxAccuracyThreshold || 100,
+    Math.min((allowedRadius || 100) * 0.1, 1000)
+  );
+
+  if (accuracy === undefined || accuracy === null || accuracy > effectiveMaxAccuracy) {
     return {
       isInside: false,
       distanceMeters: null,
@@ -65,10 +70,12 @@ export const validateGeofence = (
   const distance = calculateDistance(studentLat, studentLon, busLat, busLon);
 
   if (distance > allowedRadius) {
+    const limitLabel = allowedRadius >= 1000 ? `${allowedRadius / 1000} km` : `${allowedRadius} meters`;
     return {
       isInside: false,
       distanceMeters: distance,
       error: 'You are outside the permitted bus area.',
+      detail: `You are outside the permitted bus area (${Math.round(distance)}m away, permitted range is ${limitLabel}).`,
     };
   }
 
