@@ -15,7 +15,8 @@ import {
   X,
   UploadCloud,
   FileSpreadsheet,
-  Download
+  Download,
+  Percent
 } from 'lucide-react';
 
 export const StudentList = () => {
@@ -33,6 +34,11 @@ export const StudentList = () => {
   const [importing, setImporting] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
+  // Quick Attendance Percentage Edit Modal state
+  const [attendanceModalStudent, setAttendanceModalStudent] = useState(null);
+  const [newAttendancePct, setNewAttendancePct] = useState(75);
+  const [updatingPct, setUpdatingPct] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     rollNumber: '',
@@ -41,6 +47,7 @@ export const StudentList = () => {
     gender: 'Male',
     department: 'Computer Science & Engineering',
     year: '3rd Year',
+    attendancePercentage: 0,
   });
 
   const fetchStudents = async () => {
@@ -126,8 +133,47 @@ export const StudentList = () => {
       department: s.department,
       year: s.year,
       accountStatus: s.accountStatus,
+      attendancePercentage: s.attendancePercentage ?? 0,
     });
     setIsAddModalOpen(true);
+  };
+
+  const openAttendanceModal = (s) => {
+    setAttendanceModalStudent(s);
+    setNewAttendancePct(s.attendancePercentage ?? 0);
+  };
+
+  const handleUpdateAttendancePercentage = async (e) => {
+    if (e) e.preventDefault();
+    if (!attendanceModalStudent) return;
+    try {
+      setUpdatingPct(true);
+      const res = await axiosClient.patch(
+        `/api/students/${attendanceModalStudent._id}/attendance-percentage`,
+        { attendancePercentage: Number(newAttendancePct) }
+      );
+      if (res.data.success) {
+        setNotification({
+          type: 'success',
+          text: res.data.message || `Attendance percentage updated to ${newAttendancePct}%.`,
+        });
+        setStudents((prev) =>
+          prev.map((s) =>
+            s._id === attendanceModalStudent._id
+              ? { ...s, attendancePercentage: res.data.student?.attendancePercentage ?? Number(newAttendancePct) }
+              : s
+          )
+        );
+        setAttendanceModalStudent(null);
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to update attendance percentage.',
+      });
+    } finally {
+      setUpdatingPct(false);
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -396,17 +442,28 @@ export const StudentList = () => {
                       )}
                     </td>
                     <td className="py-3.5 px-6">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <button
+                        onClick={() => openAttendanceModal(s)}
+                        className="group flex items-center space-x-2 text-left hover:bg-slate-100/80 px-2 py-1 rounded-lg transition"
+                        title="Click to edit attendance percentage"
+                      >
+                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                           <div
-                            className="h-full bg-indigo-600 rounded-full"
-                            style={{ width: `${s.attendancePercentage || 0}%` }}
+                            className={`h-full rounded-full transition-all ${
+                              (s.attendancePercentage || 0) >= 75
+                                ? 'bg-emerald-600'
+                                : (s.attendancePercentage || 0) >= 60
+                                ? 'bg-amber-500'
+                                : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${Math.min(100, s.attendancePercentage || 0)}%` }}
                           ></div>
                         </div>
-                        <span className="font-mono font-semibold text-slate-800">
+                        <span className="font-mono font-semibold text-slate-800 group-hover:text-indigo-600">
                           {s.attendancePercentage || 0}%
                         </span>
-                      </div>
+                        <Percent className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 transition" />
+                      </button>
                     </td>
                     <td className="py-3.5 px-6">
                       <span
@@ -420,7 +477,14 @@ export const StudentList = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-6 text-right">
-                      <div className="flex items-center justify-end space-x-2">
+                      <div className="flex items-center justify-end space-x-1.5">
+                        <button
+                          onClick={() => openAttendanceModal(s)}
+                          className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
+                          title="Edit Attendance %"
+                        >
+                          <Percent className="w-4 h-4" />
+                        </button>
                         {s.deviceRegistrationStatus && (
                           <button
                             onClick={() => handleResetDevice(s)}
@@ -433,7 +497,7 @@ export const StudentList = () => {
                         <button
                           onClick={() => openEdit(s)}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
-                          title="Edit Student"
+                          title="Edit Student Details"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -626,6 +690,29 @@ export const StudentList = () => {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Attendance Percentage (%)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.attendancePercentage ?? 0}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        attendancePercentage: Math.max(0, Math.min(100, Number(e.target.value) || 0)),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="0 - 100"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs text-slate-400 font-bold">%</span>
+                </div>
+              </div>
+
               <div className="pt-2 flex justify-end space-x-3">
                 <button
                   type="button"
@@ -639,6 +726,176 @@ export const StudentList = () => {
                   className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 shadow-sm"
                 >
                   {editingStudent ? 'Save Changes' : 'Create Student'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Attendance Percentage Modal */}
+      {attendanceModalStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                  <Percent className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Edit Attendance Percentage
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Update student's official attendance record
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAttendanceModalStudent(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Student Card Summary */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mb-5">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">
+                    {attendanceModalStudent.name}
+                  </div>
+                  <div className="text-xs font-mono text-slate-500 mt-0.5">
+                    {attendanceModalStudent.rollNumber} • {attendanceModalStudent.department}
+                  </div>
+                </div>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    (attendanceModalStudent.gender || 'Male').toLowerCase() === 'female'
+                      ? 'bg-pink-100 text-pink-800 border border-pink-200'
+                      : 'bg-blue-100 text-blue-800 border border-blue-200'
+                  }`}
+                >
+                  {(attendanceModalStudent.gender || 'Male').toLowerCase() === 'female' ? 'Girl' : 'Boy'}
+                </span>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                <span className="text-slate-500">Current Attendance:</span>
+                <span className="font-mono font-bold text-slate-800">
+                  {attendanceModalStudent.attendancePercentage ?? 0}%
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateAttendancePercentage} className="space-y-4">
+              {/* Slider & Input */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold text-slate-700">
+                    New Percentage Value
+                  </label>
+                  <div className="flex items-center space-x-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={newAttendancePct}
+                      onChange={(e) =>
+                        setNewAttendancePct(Math.max(0, Math.min(100, Number(e.target.value) || 0)))
+                      }
+                      className="w-16 px-2 py-1 text-center border border-slate-200 rounded-lg text-sm font-mono font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+                    <span className="text-xs font-bold text-slate-500">%</span>
+                  </div>
+                </div>
+
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={newAttendancePct}
+                  onChange={(e) => setNewAttendancePct(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                />
+
+                <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>75% (Eligible)</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Quick Presets
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[60, 75, 85, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setNewAttendancePct(preset)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-bold transition border ${
+                        newAttendancePct === preset
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {preset}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status Alert */}
+              <div
+                className={`p-3 rounded-xl border text-xs flex items-center space-x-2 ${
+                  newAttendancePct >= 75
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : newAttendancePct >= 60
+                    ? 'bg-amber-50 text-amber-800 border-amber-200'
+                    : 'bg-rose-50 text-rose-800 border-rose-200'
+                }`}
+              >
+                {newAttendancePct >= 75 ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                )}
+                <span>
+                  {newAttendancePct >= 75
+                    ? 'Eligible: Meets or exceeds the 75% minimum threshold.'
+                    : 'Attendance Shortage: Below the 75% requirement for exam hall ticket.'}
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setAttendanceModalStudent(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingPct}
+                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-sm transition disabled:opacity-50 flex items-center space-x-1.5"
+                >
+                  {updatingPct ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <span>Save Percentage</span>
+                  )}
                 </button>
               </div>
             </form>

@@ -176,7 +176,7 @@ export const createStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   try {
-    const { name, phone, department, year, gender, accountStatus } = req.body;
+    const { name, phone, department, year, gender, accountStatus, attendancePercentage, totalClasses, attendedClasses } = req.body;
 
     const student = await Student.findById(req.params.id);
     if (!student) {
@@ -192,6 +192,15 @@ export const updateStudent = async (req, res) => {
     if (year) student.year = year;
     if (gender) student.gender = gender;
     if (accountStatus) student.accountStatus = accountStatus;
+    if (attendancePercentage !== undefined && attendancePercentage !== null && !isNaN(attendancePercentage)) {
+      student.attendancePercentage = Math.max(0, Math.min(100, Math.round(Number(attendancePercentage))));
+    }
+    if (totalClasses !== undefined && !isNaN(totalClasses)) {
+      student.totalClasses = Math.max(0, Math.round(Number(totalClasses)));
+    }
+    if (attendedClasses !== undefined && !isNaN(attendedClasses)) {
+      student.attendedClasses = Math.max(0, Math.round(Number(attendedClasses)));
+    }
 
     await student.save();
 
@@ -219,6 +228,57 @@ export const updateStudent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update student',
+      error: error.message,
+    });
+  }
+};
+
+export const updateStudentAttendancePercentage = async (req, res) => {
+  try {
+    const { attendancePercentage } = req.body;
+
+    if (attendancePercentage === undefined || attendancePercentage === null || isNaN(attendancePercentage)) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid attendance percentage (0 to 100) is required.',
+      });
+    }
+
+    const pct = Math.max(0, Math.min(100, Math.round(Number(attendancePercentage))));
+
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found',
+      });
+    }
+
+    const oldPercentage = student.attendancePercentage;
+    student.attendancePercentage = pct;
+    await student.save();
+
+    await AuditLog.create({
+      action: 'STUDENT_ATTENDANCE_PERCENTAGE_OVERRIDDEN',
+      performedBy: req.user._id,
+      targetStudentId: student._id,
+      details: {
+        rollNumber: student.rollNumber,
+        oldPercentage,
+        newPercentage: pct,
+      },
+      ipAddress: req.ip || '',
+    });
+
+    res.json({
+      success: true,
+      message: `Attendance percentage for ${student.name} updated to ${pct}%.`,
+      student,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update attendance percentage',
       error: error.message,
     });
   }

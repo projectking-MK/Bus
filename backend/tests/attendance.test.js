@@ -810,6 +810,67 @@ test('Attendance Verification Logs: accurately populates student gender (Male an
   assert.ok(boysLogsRes.body.records.every((r) => r.studentId?.gender === 'Male'));
 });
 
+test('Student Attendance Percentage: Admin can edit student attendance percentage via PATCH and PUT endpoints', async () => {
+  // 1. Student attempts to update percentage -> 403 Forbidden
+  const forbiddenRes = await makeRequest(
+    'PATCH',
+    `/api/students/${student1._id}/attendance-percentage`,
+    { attendancePercentage: 88 },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(forbiddenRes.status, 403);
+
+  // 2. Admin updates attendance percentage to 85%
+  const updateRes = await makeRequest(
+    'PATCH',
+    `/api/students/${student1._id}/attendance-percentage`,
+    { attendancePercentage: 85 },
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(updateRes.status, 200);
+  assert.equal(updateRes.body.success, true);
+  assert.equal(updateRes.body.student.attendancePercentage, 85);
+
+  // 3. Verify in database
+  const updatedStudent = await Student.findById(student1._id);
+  assert.equal(updatedStudent.attendancePercentage, 85);
+
+  // 4. Test boundary value clamping (e.g., > 100 clamps to 100)
+  const clampRes = await makeRequest(
+    'PATCH',
+    `/api/students/${student1._id}/attendance-percentage`,
+    { attendancePercentage: 120 },
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(clampRes.status, 200);
+  assert.equal(clampRes.body.student.attendancePercentage, 100);
+
+  // 5. Test invalid value returns 400 Bad Request
+  const badReq = await makeRequest(
+    'PATCH',
+    `/api/students/${student1._id}/attendance-percentage`,
+    { attendancePercentage: 'invalid_number' },
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(badReq.status, 400);
+
+  // 6. Test full edit PUT /api/students/:id updates attendancePercentage
+  const putRes = await makeRequest(
+    'PUT',
+    `/api/students/${student2._id}`,
+    {
+      name: 'Aditi Rao',
+      department: 'Information Technology',
+      year: '3rd Year',
+      attendancePercentage: 92,
+    },
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(putRes.status, 200);
+  assert.equal(putRes.body.student.attendancePercentage, 92);
+});
+
+
 
 
 
