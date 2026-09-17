@@ -246,11 +246,11 @@ The system is configured for **55 registered students** (21 Boys and 34 Girls). 
 | Role | Username / Email | Password | Details |
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@college.edu` | `Admin@123` | Chief Administrator (Full access, Excel export, Student Feed) |
-| **Driver** | `driver@college.edu` | `Driver@123` | Senior Driver (Bus #BUS-01 console, 55 capacity) |
+| **Driver** | `driver@college.edu` | `Driver@123` | Anand (Bus #Bus No-09 console, 55 capacity) |
 
 #### Student Credentials Format
-- **Username**: Student Name **without initial** (e.g. `Magila`, `Kowshiek`, `Hari`) or College Email (`student01@college.edu` to `student55@college.edu`)
-- **Password**: Student Name in lowercase without initial + Department in uppercase (e.g. `magilaAIDS`, `kowshiekIT`, `hariECE`)
+- **Username**: Student Name **without initial** (e.g. `Kowshiek`, `Hari`, `Ramya`) or College Email (`student01@college.edu` to `student55@college.edu`)
+- **Password**: Student Name in lowercase without initial + Department in uppercase (e.g. `kowshiekIT`, `hariECE`, `ramyaCSE`)
 
 | # | Student Full Name | Username (No Initial) | Dept | Year | Gender | Password | Roll No |
 | :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |

@@ -132,7 +132,7 @@ export const AdminDashboard = () => {
             Admin Attendance Overview
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            College Bus #BUS-01 • Real-time Monitoring & Separate Trip Records
+            College Bus #Bus No-09 • Real-time Monitoring & Separate Trip Records
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">

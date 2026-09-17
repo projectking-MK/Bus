@@ -127,7 +127,7 @@ export const seedDatabase = async () => {
 
     console.log('[Seed] Creating Bus Driver User...');
     const driverUser = await User.create({
-      name: 'Mr. Muthuvel K (Senior Driver)',
+      name: 'Anand',
       username: 'driver',
       email: 'driver@college.edu',
       password: 'Driver@123',
@@ -138,8 +138,8 @@ export const seedDatabase = async () => {
 
     console.log('[Seed] Creating Bus Vehicle (Capacity: 55)...');
     const bus = await Bus.create({
-      busNumber: 'BUS-01',
-      routeName: 'Main Campus Express Route 4 (Tambaram - Campus)',
+      busNumber: 'Bus No-09',
+      routeName: 'College Bus No 09',
       capacity: 55,
       defaultGeofenceRadius: 100, // 100 meters
       defaultCenterLatitude: 13.0827,

@@ -7,6 +7,7 @@ import {
   deleteStudent,
   importStudents,
   getStudentTemplate,
+  updateStudentLocation,
 } from '../controllers/studentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.use(protect);
 
+router.post('/location', authorize('STUDENT', 'ADMIN'), updateStudentLocation);
 router.get('/template', authorize('ADMIN'), getStudentTemplate);
 router.post('/import', authorize('ADMIN'), importStudents);
 router.get('/', authorize('ADMIN'), getAllStudents);

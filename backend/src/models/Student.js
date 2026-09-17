@@ -86,6 +86,22 @@ const studentSchema = new mongoose.Schema(
       enum: ['ACTIVE', 'SUSPENDED'],
       default: 'ACTIVE',
     },
+    lastLatitude: {
+      type: Number,
+      default: null,
+    },
+    lastLongitude: {
+      type: Number,
+      default: null,
+    },
+    lastGpsAccuracy: {
+      type: Number,
+      default: null,
+    },
+    lastLocationUpdate: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

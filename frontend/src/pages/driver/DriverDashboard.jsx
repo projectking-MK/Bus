@@ -199,7 +199,7 @@ export const DriverDashboard = () => {
             )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Driver: <strong className="text-slate-700">{user?.name}</strong> • Bus No: <strong className="text-indigo-600 font-mono">BUS-01</strong>
+            Driver: <strong className="text-slate-700">{user?.name}</strong> • Bus No: <strong className="text-indigo-600 font-mono">Bus No-09</strong>
           </p>
         </div>
 

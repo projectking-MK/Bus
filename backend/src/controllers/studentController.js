@@ -381,3 +381,49 @@ export const getStudentTemplate = (req, res) => {
   res.attachment('students_import_template_55.csv');
   return res.send(csvHeaders + sampleRows);
 };
+
+/**
+ * Automatically update current GPS location for student upon login / dashboard access
+ */
+export const updateStudentLocation = async (req, res) => {
+  try {
+    const { latitude, longitude, accuracy } = req.body;
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Latitude and longitude are required',
+      });
+    }
+
+    const student = req.student || (await Student.findOne({ userId: req.user._id }));
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student record not found',
+      });
+    }
+
+    student.lastLatitude = Number(latitude);
+    student.lastLongitude = Number(longitude);
+    student.lastGpsAccuracy = accuracy !== undefined && accuracy !== null ? Number(accuracy) : null;
+    student.lastLocationUpdate = new Date();
+    await student.save();
+
+    res.json({
+      success: true,
+      message: 'Student GPS location updated successfully',
+      location: {
+        latitude: student.lastLatitude,
+        longitude: student.lastLongitude,
+        accuracy: student.lastGpsAccuracy,
+        updatedAt: student.lastLocationUpdate,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update student GPS location',
+      error: error.message,
+    });
+  }
+};

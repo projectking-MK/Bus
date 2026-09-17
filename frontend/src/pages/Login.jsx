@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bus, Lock, Mail, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Bus, Lock, Mail, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -45,7 +46,7 @@ export const Login = () => {
           Smart Bus Attendance
         </h2>
         <p className="mt-1 text-sm text-indigo-200">
-          College Route #04 • 55 Registered Students System
+          College Bus No 09 • 55 Registered Students System
         </p>
       </div>
 
@@ -72,7 +73,7 @@ export const Login = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. Magila, Kowshiek, or admin@college.edu"
+                  placeholder="e.g. Kowshiek, admin, or driver"
                   className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
               </div>
@@ -89,16 +90,24 @@ export const Login = () => {
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition focus:outline-none"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                <span className="font-semibold text-slate-700">Student Password:</span> name without initial (lowercase) + Department (uppercase), e.g. <span className="font-semibold text-indigo-600">magilaAIDS</span>, <span className="font-semibold text-indigo-600">kowshiekIT</span>.
+                <span className="font-semibold text-slate-700">Student Password:</span> name without initial (lowercase) + Department (uppercase), e.g. <span className="font-semibold text-indigo-600">kowshiekIT</span>, <span className="font-semibold text-indigo-600">hariECE</span>.
               </p>
             </div>
 
@@ -123,7 +132,7 @@ export const Login = () => {
             <span>Hardware Device Binding</span>
           </span>
           <span>•</span>
-          <span>20-Min Dynamic QR</span>
+          <span>40-Min Dynamic QR</span>
           <span>•</span>
           <span>GPS Geofencing</span>
         </div>

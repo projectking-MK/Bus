@@ -30,7 +30,7 @@ export const Navbar = () => {
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-slate-900 tracking-tight text-lg">SmartBus</span>
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  BUS-01
+                  Bus No-09
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden sm:block">College Attendance Monitoring System</p>

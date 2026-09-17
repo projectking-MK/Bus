@@ -21,9 +21,10 @@ export const AuthProvider = ({ children }) => {
             setUser(res.data.user);
             setStudent(res.data.student);
 
-            // If student, check if device needs auto-registration
+            // If student, check if device needs auto-registration and auto-sync GPS location
             if (res.data.user.role === 'STUDENT') {
               await checkAndRegisterDevice(res.data.student);
+              syncStudentLocation();
             }
           }
         } catch (err) {
@@ -36,6 +37,28 @@ export const AuthProvider = ({ children }) => {
 
     initAuth();
   }, []);
+
+  const syncStudentLocation = () => {
+    if (typeof window !== 'undefined' && navigator && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await axiosClient.post('/api/students/location', {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          } catch (err) {
+            console.warn('[Student GPS Auto-update Error]', err.response?.data?.message || err.message);
+          }
+        },
+        (err) => {
+          console.warn('[Student GPS Notice]', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
+  };
 
   const checkAndRegisterDevice = async (studentDoc) => {
     const currentDeviceId = getOrCreateDeviceIdentifier();
@@ -66,6 +89,7 @@ export const AuthProvider = ({ children }) => {
 
       if (newUser.role === 'STUDENT') {
         await checkAndRegisterDevice(newStudent);
+        syncStudentLocation();
       }
 
       return { success: true, user: newUser };

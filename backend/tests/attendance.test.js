@@ -46,7 +46,7 @@ test.before(async () => {
   adminToken = jwt.sign({ id: admin._id, role: 'ADMIN', email: admin.email }, TEST_SECRET);
 
   const driver = await User.create({
-    name: 'Driver Test',
+    name: 'Anand',
     email: 'driver.test@college.edu',
     password: 'DriverPassword123',
     role: 'DRIVER',
@@ -126,8 +126,8 @@ test.before(async () => {
   student3Token = jwt.sign({ id: u3._id, role: 'STUDENT', email: u3.email }, TEST_SECRET);
 
   testBus = await Bus.create({
-    busNumber: 'BUS-01',
-    routeName: 'Test Campus Route',
+    busNumber: 'Bus No-09',
+    routeName: 'College Bus No 09',
     capacity: 55,
     defaultGeofenceRadius: 100,
     defaultCenterLatitude: 13.0827,
@@ -599,4 +599,32 @@ test('17. Trip Lifecycle: Morning Trip -> Stop -> Evening Trip starts with 0/def
   assert.equal(stopEveningRes.status, 200);
   assert.equal(stopEveningRes.body.summary.presentCount, 1);
 });
+
+test('Student can automatically update their current GPS location upon login', async () => {
+  const locRes = await makeRequest(
+    'POST',
+    '/api/students/location',
+    {
+      latitude: 13.0835,
+      longitude: 80.2715,
+      accuracy: 12.5,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+
+  assert.equal(locRes.status, 200);
+  assert.equal(locRes.body.success, true);
+  assert.equal(locRes.body.location.latitude, 13.0835);
+  assert.equal(locRes.body.location.longitude, 80.2715);
+  assert.equal(locRes.body.location.accuracy, 12.5);
+  assert.ok(locRes.body.location.updatedAt);
+
+  // Check student model in DB
+  const student = await Student.findById(student1._id);
+  assert.equal(student.lastLatitude, 13.0835);
+  assert.equal(student.lastLongitude, 80.2715);
+  assert.equal(student.lastGpsAccuracy, 12.5);
+  assert.ok(student.lastLocationUpdate);
+});
+
 

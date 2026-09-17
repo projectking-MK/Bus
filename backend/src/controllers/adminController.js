@@ -99,8 +99,8 @@ export const getDashboardSummary = async (req, res) => {
             session: selectedTrip.session || 'MORNING',
             sessionName: selectedTrip.sessionName || (selectedTrip.session === 'MORNING' ? 'Morning Trip' : 'Evening Trip'),
             status: selectedTrip.status,
-            busNumber: selectedTrip.busId?.busNumber || 'BUS-01',
-            routeName: selectedTrip.busId?.routeName || 'Main Campus Route 4',
+            busNumber: selectedTrip.busId?.busNumber || 'Bus No-09',
+            routeName: selectedTrip.busId?.routeName || 'College Bus No 09',
             driverName: selectedTrip.driverId?.name || 'Driver',
             startTime: selectedTrip.startTime,
             endTime: selectedTrip.endTime,
@@ -119,7 +119,7 @@ export const getDashboardSummary = async (req, res) => {
         status: t.status,
         startTime: t.startTime,
         endTime: t.endTime,
-        busNumber: t.busId?.busNumber || 'BUS-01',
+        busNumber: t.busId?.busNumber || 'Bus No-09',
       })),
       stats: {
         totalStudents,
@@ -145,8 +145,8 @@ export const getDashboardSummary = async (req, res) => {
             tripId: activeTrip.tripId,
             session: activeTrip.session || 'MORNING',
             sessionName: activeTrip.sessionName || 'Morning Trip',
-            busNumber: activeTrip.busId?.busNumber || 'BUS-01',
-            routeName: activeTrip.busId?.routeName,
+            busNumber: activeTrip.busId?.busNumber || 'Bus No-09',
+            routeName: activeTrip.busId?.routeName || 'College Bus No 09',
             driverName: activeTrip.driverId?.name,
             startTime: activeTrip.startTime,
             currentLatitude: activeTrip.currentLatitude,
@@ -295,8 +295,8 @@ export const exportAttendanceExcel = async (req, res) => {
     const tripInfo = {
       tripId: trip?.tripId || 'TRIP-DEMO',
       sessionName: trip?.sessionName || (trip?.session === 'MORNING' ? 'Morning Trip' : 'Evening Trip'),
-      busNumber: trip?.busId?.busNumber || bus?.busNumber || 'BUS-01',
-      routeName: trip?.busId?.routeName || bus?.routeName || 'Main Campus Route 4',
+      busNumber: trip?.busId?.busNumber || bus?.busNumber || 'Bus No-09',
+      routeName: trip?.busId?.routeName || bus?.routeName || 'College Bus No 09',
       date: selectedDate,
     };
 
@@ -357,8 +357,8 @@ export const updateGeofenceSettings = async (req, res) => {
     let bus = await Bus.findOne({ isActive: true });
     if (!bus) {
       bus = await Bus.create({
-        busNumber: 'BUS-01',
-        routeName: 'Campus Route 4',
+        busNumber: 'Bus No-09',
+        routeName: 'College Bus No 09',
         capacity: 68,
         defaultGeofenceRadius: radius || 100,
         defaultCenterLatitude: centerLatitude || 13.0827,

@@ -81,7 +81,7 @@ export const generateAttendanceExcelWorkbook = async ({ allStudents, attendanceR
   wsSummary.mergeCells('A2:G2');
   const subCell = wsSummary.getCell('A2');
   const sessionText = trip?.sessionName ? ` | Session: ${trip.sessionName}` : '';
-  subCell.value = `Bus: ${trip?.busNumber || 'BUS-01'} | Route: ${trip?.routeName || 'Main Campus Route 4'}${sessionText} | Date: ${reportDate} | Trip: ${trip?.tripId || 'ACTIVE'}`;
+  subCell.value = `Bus: ${trip?.busNumber || 'Bus No-09'} | Route: ${trip?.routeName || 'College Bus No 09'}${sessionText} | Date: ${reportDate} | Trip: ${trip?.tripId || 'ACTIVE'}`;
   subCell.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FFFFFFFF' } };
   subCell.alignment = { vertical: 'middle', horizontal: 'center' };
   subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4338CA' } };

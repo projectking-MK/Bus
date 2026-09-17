@@ -63,6 +63,27 @@ export const StudentDashboard = () => {
 
   useEffect(() => {
     fetchStudentData();
+
+    // Automatically acquire and sync student's current GPS location on dashboard mount
+    if (typeof window !== 'undefined' && navigator && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await axiosClient.post('/api/students/location', {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+            });
+          } catch (err) {
+            console.warn('[Student GPS Auto-update Error]', err.response?.data?.message || err.message);
+          }
+        },
+        (err) => {
+          console.warn('[Student GPS Notice]', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+      );
+    }
   }, []);
 
   const isPresentToday = todayRecord && (todayRecord.status === 'PRESENT' || todayRecord.status === 'LATE');
@@ -136,7 +157,7 @@ export const StudentDashboard = () => {
                     Attendance Marked for {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip
                   </h3>
                   <p className="text-xs text-emerald-700 mt-0.5">
-                    Verified on {activeTrip.busId?.busNumber || 'BUS-01'} • Distance: {activeTripRecord?.distanceMeters || 0}m
+                    Verified on {activeTrip.busId?.busNumber || 'Bus No-09'} • Distance: {activeTripRecord?.distanceMeters || 0}m
                   </p>
                 </div>
               </div>
