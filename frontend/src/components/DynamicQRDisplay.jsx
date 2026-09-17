@@ -5,7 +5,7 @@ import { RefreshCw, Clock, ShieldCheck, AlertCircle, Download, Copy, Check } fro
 
 export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
   const [qrData, setQrData] = useState(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(1200);
+  const [remainingSeconds, setRemainingSeconds] = useState(2400);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState(null);
@@ -19,7 +19,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
       const res = await axiosClient.get('/api/qr/current');
       if (res.data.success) {
         setQrData(res.data);
-        const secs = res.data.remainingSeconds || 1200;
+        const secs = res.data.remainingSeconds || 2400;
         setRemainingSeconds(secs);
         if (onTokenChange) onTokenChange(res.data.token);
 
@@ -66,9 +66,9 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
     timerRef.current = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
-          // Token expired, immediately fetch the new active token (20-minute TTL)
+          // Token expired, immediately fetch the new active token (40-minute TTL)
           fetchCurrentQR();
-          return 1200;
+          return 2400;
         }
         return prev - 1;
       });
@@ -79,7 +79,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
     };
   }, [qrData?.token]);
 
-  const totalSeconds = qrData?.totalValiditySeconds || 1200;
+  const totalSeconds = qrData?.totalValiditySeconds || 2400;
   const percentageRemaining = Math.max(0, Math.min(100, (remainingSeconds / totalSeconds) * 100));
 
   // Friendly time format: e.g. "19m 45s" or "45s"
@@ -297,7 +297,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
           {/* Token info banner */}
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Trip: <strong className="text-slate-700 font-mono">{activeTrip?.tripId || 'ACTIVE'}</strong></span>
-            <span>Window: <strong className="text-indigo-600 font-mono">20 Mins (1200s)</strong></span>
+            <span>Window: <strong className="text-indigo-600 font-mono">40 Mins (2400s)</strong></span>
           </div>
         </>
       )}

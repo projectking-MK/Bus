@@ -70,9 +70,9 @@ export const startTrip = async (req, res) => {
       lastLocationUpdate: new Date(),
     });
 
-    // Generate initial dynamic QR token (1200s = 20 minutes)
+    // Generate initial dynamic QR token (2400s = 40 minutes)
     const token = crypto.randomBytes(16).toString('hex');
-    const expirySeconds = parseInt(process.env.QR_EXPIRY_SECONDS || '1200', 10);
+    const expirySeconds = parseInt(process.env.QR_EXPIRY_SECONDS || '2400', 10);
     const expiresAt = new Date(Date.now() + expirySeconds * 1000);
 
     await QRCode.create({
