@@ -138,7 +138,7 @@ export const seedDatabase = async () => {
 
     console.log('[Seed] Creating Bus Vehicle (Capacity: 55)...');
     const bus = await Bus.create({
-      busNumber: 'Bus No-09',
+      busNumber: 'BUS-09',
       routeName: 'College Bus No 09',
       capacity: 55,
       defaultGeofenceRadius: 100, // 100 meters

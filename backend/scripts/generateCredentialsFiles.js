@@ -26,7 +26,7 @@ const allStudents = initialStudentsDataset.map((item, index) => {
     department: item.department,
     year: item.year,
     email,
-    busNumber: 'Bus No-09',
+    busNumber: 'BUS-09',
     route: 'College Bus No 09',
   };
 });
@@ -64,7 +64,7 @@ const generateExcelFile = async (students, title, headerColor, filename) => {
   // 2. Subtitle Metadata
   sheet.mergeCells('A2:I2');
   const subCell = sheet.getCell('A2');
-  subCell.value = `Bus: Bus No-09 | Route: College Bus No 09 | Total Records: ${students.length} | Generated: ${new Date().toLocaleDateString('en-GB')}`;
+  subCell.value = `Bus: BUS-09 | Route: College Bus No 09 | Total Records: ${students.length} | Generated: ${new Date().toLocaleDateString('en-GB')}`;
   subCell.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FFFFFFFF' } };
   subCell.alignment = { vertical: 'middle', horizontal: 'center' };
   subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor.secondary } };
@@ -179,7 +179,7 @@ const generateCombinedExcel = async () => {
 
     sheet.mergeCells('A2:I2');
     const subCell = sheet.getCell('A2');
-    subCell.value = `Bus: Bus No-09 | Route: College Bus No 09 | Total: ${students.length} Students`;
+    subCell.value = `Bus: BUS-09 | Route: College Bus No 09 | Total: ${students.length} Students`;
     subCell.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FFFFFFFF' } };
     subCell.alignment = { vertical: 'middle', horizontal: 'center' };
     subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor.secondary } };

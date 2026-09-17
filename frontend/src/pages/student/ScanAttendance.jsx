@@ -213,7 +213,7 @@ export const ScanAttendance = () => {
             Attendance Marked Successfully
           </h2>
           <p className="text-xs text-slate-500 mb-6">
-            Multi-layer anti-proxy checks verified your presence on College Bus #Bus No-09.
+            Multi-layer anti-proxy checks verified your presence on College Bus #BUS-09.
           </p>
 
           <div className="bg-slate-50 rounded-2xl p-4 text-left space-y-2 text-xs mb-6 border border-slate-100">

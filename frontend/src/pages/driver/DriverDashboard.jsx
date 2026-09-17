@@ -259,7 +259,7 @@ export const DriverDashboard = () => {
             )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Driver: <strong className="text-slate-700">{user?.name && !user.name.includes('Muthuvel') ? user.name : 'Anand'}</strong> • Bus No: <strong className="text-indigo-600 font-mono">Bus No-09</strong>
+            Driver: <strong className="text-slate-700">{user?.name && !user.name.includes('Muthuvel') ? user.name : 'Anand'}</strong> • Bus No: <strong className="text-indigo-600 font-mono">BUS-09</strong>
           </p>
         </div>
 

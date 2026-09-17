@@ -126,7 +126,7 @@ test.before(async () => {
   student3Token = jwt.sign({ id: u3._id, role: 'STUDENT', email: u3.email }, TEST_SECRET);
 
   testBus = await Bus.create({
-    busNumber: 'Bus No-09',
+    busNumber: 'BUS-09',
     routeName: 'College Bus No 09',
     capacity: 55,
     defaultGeofenceRadius: 100,

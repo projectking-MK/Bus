@@ -157,7 +157,7 @@ export const StudentDashboard = () => {
                     Attendance Marked for {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip
                   </h3>
                   <p className="text-xs text-emerald-700 mt-0.5">
-                    Verified on {activeTrip.busId?.busNumber || 'Bus No-09'} • Distance: {activeTripRecord?.distanceMeters || 0}m
+                    Verified on {activeTrip.busId?.busNumber || 'BUS-09'} • Distance: {activeTripRecord?.distanceMeters || 0}m
                   </p>
                 </div>
               </div>

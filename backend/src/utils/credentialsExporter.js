@@ -20,7 +20,7 @@ export const getFormattedStudents = (filterGender = null) => {
       department: item.department,
       year: item.year,
       email,
-      busNumber: 'Bus No-09',
+      busNumber: 'BUS-09',
       route: 'College Bus No 09',
     };
   });
@@ -57,7 +57,7 @@ export const generateCredentialsWorkbook = ({ gender = 'ALL' }) => {
     // 2. Subtitle Metadata
     sheet.mergeCells('A2:I2');
     const subCell = sheet.getCell('A2');
-    subCell.value = `Bus: Bus No-09 | Route: College Bus No 09 | Total: ${studentsList.length} Students | Confidential Credentials`;
+    subCell.value = `Bus: BUS-09 | Route: College Bus No 09 | Total: ${studentsList.length} Students | Confidential Credentials`;
     subCell.font = { name: 'Calibri', size: 11, italic: true, color: { argb: 'FFFFFFFF' } };
     subCell.alignment = { vertical: 'middle', horizontal: 'center' };
     subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerColor.secondary } };

@@ -105,9 +105,11 @@ if (isMainModule && process.env.NODE_ENV !== 'test') {
         const { seedDatabase } = await import('../seed/seed.js');
         await seedDatabase();
       } else {
-        // Ensure admin and driver names are updated in existing database
+        // Ensure admin, driver, and bus identifier are updated in existing database
+        const { Bus } = await import('./models/Bus.js');
         await User.updateMany({ role: 'ADMIN' }, { $set: { name: 'R. Kowshiek IT' } });
         await User.updateMany({ role: 'DRIVER' }, { $set: { name: 'Anand' } });
+        await Bus.updateMany({}, { $set: { busNumber: 'BUS-09' } });
       }
 
       app.listen(PORT, () => {

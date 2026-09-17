@@ -178,7 +178,7 @@ export const TripConfig = () => {
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200/60 grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
             <div>
               <span className="text-xs text-slate-500">Bus Identifier</span>
-              <p className="text-base font-bold text-slate-900 font-mono">{bus?.busNumber || 'Bus No-09'}</p>
+              <p className="text-base font-bold text-slate-900 font-mono">{bus?.busNumber || 'BUS-09'}</p>
             </div>
             <div>
               <span className="text-xs text-slate-500">Total Capacity</span>

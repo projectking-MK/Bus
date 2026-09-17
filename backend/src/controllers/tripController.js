@@ -31,7 +31,7 @@ export const startTrip = async (req, res) => {
     if (!bus) {
       // Create fallback default bus if database wasn't seeded yet
       bus = await Bus.create({
-        busNumber: 'Bus No-09',
+        busNumber: 'BUS-09',
         routeName: 'College Bus No 09',
         capacity: 68,
         defaultGeofenceRadius: 100,
