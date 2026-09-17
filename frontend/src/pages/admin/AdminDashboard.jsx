@@ -17,7 +17,9 @@ import {
   AlertCircle,
   Key,
   ChevronDown,
-  Download
+  Download,
+  Trash2,
+  X
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -26,6 +28,12 @@ export const AdminDashboard = () => {
   const [error, setError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState('');
   const [activeTab, setActiveTab] = useState('present'); // 'present' | 'absent'
+
+  // Delete trip attendance state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [tripToDelete, setTripToDelete] = useState(null);
+  const [deletingTrip, setDeletingTrip] = useState(false);
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState(null);
 
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false);
@@ -142,6 +150,34 @@ export const AdminDashboard = () => {
       alert('Failed to export student credentials. Please ensure your session is active.');
     } finally {
       setExportingCreds(false);
+    }
+  };
+
+  const openDeleteModal = (trip) => {
+    setTripToDelete(trip);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteTrip = async () => {
+    if (!tripToDelete) return;
+    try {
+      setDeletingTrip(true);
+      const res = await axiosClient.delete(`/api/trips/${tripToDelete.id || tripToDelete._id}`);
+      if (res.data.success) {
+        setIsDeleteModalOpen(false);
+        setTripToDelete(null);
+        setSelectedTripId(''); // Reset so it defaults to latest remaining trip
+        setDeleteSuccessMsg(
+          res.data.message ||
+            `Trip attendance deleted successfully. Database space has been freed (${res.data.freedSpace?.attendanceRecords || 0} records purged).`
+        );
+        setTimeout(() => setDeleteSuccessMsg(null), 6000);
+        await fetchDashboard('');
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete trip attendance.');
+    } finally {
+      setDeletingTrip(false);
     }
   };
 
@@ -289,24 +325,44 @@ export const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <label className="text-xs font-semibold text-slate-600 flex-shrink-0">View Records For:</label>
-          <select
-            value={selectedTrip?.id || selectedTripId}
-            onChange={(e) => {
-              setSelectedTripId(e.target.value);
-              fetchDashboard(e.target.value);
-            }}
-            className="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-          >
-            {allTrips.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip • {new Date(t.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} ({new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) [{t.status}]
-              </option>
-            ))}
-          </select>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-semibold text-slate-600 flex-shrink-0">View Records For:</label>
+            <select
+              value={selectedTrip?.id || selectedTripId}
+              onChange={(e) => {
+                setSelectedTripId(e.target.value);
+                fetchDashboard(e.target.value);
+              }}
+              className="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+            >
+              {allTrips.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip • {new Date(t.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })} ({new Date(t.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}) [{t.status}]
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedTrip && (
+            <button
+              onClick={() => openDeleteModal(selectedTrip)}
+              className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition shadow-sm flex items-center space-x-1.5 cursor-pointer"
+              title="Delete attendance for this trip and free up database space"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600" />
+              <span>Delete Trip Attendance</span>
+            </button>
+          )}
         </div>
       </div>
+
+      {deleteSuccessMsg && (
+        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-sm flex items-center space-x-2">
+          <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-600" />
+          <span className="font-medium">{deleteSuccessMsg}</span>
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-sm flex items-center space-x-2">
@@ -666,6 +722,104 @@ export const AdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Trip & Free Space Confirmation Modal */}
+      {isDeleteModalOpen && tripToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Delete Trip Attendance
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Free up MongoDB database storage space
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Trip Info Card */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Trip Identifier:</span>
+                <span className="font-mono font-bold text-slate-800">{tripToDelete.tripId}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Session Name:</span>
+                <span className="font-semibold text-slate-800">{tripToDelete.sessionName || tripToDelete.session}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Status:</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  tripToDelete.status === 'ACTIVE'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {tripToDelete.status}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Start Time:</span>
+                <span className="font-medium text-slate-600">
+                  {tripToDelete.startTime ? new Date(tripToDelete.startTime).toLocaleString() : 'N/A'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-rose-50/80 rounded-2xl border border-rose-200 text-xs text-rose-800 mb-6 space-y-1.5">
+              <div className="font-bold flex items-center space-x-1.5 text-rose-900">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                <span>Database Cleanup & Free Space:</span>
+              </div>
+              <ul className="list-disc list-inside space-y-1 text-rose-700 pl-1">
+                <li>Permanently purges all attendance check-ins for this trip.</li>
+                <li>Deletes all associated dynamic QR tokens.</li>
+                <li>Permanently removes the trip record to reclaim database storage.</li>
+                <li>Recalculates students' attendance counts & percentages so records stay accurate.</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deletingTrip}
+                onClick={confirmDeleteTrip}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold shadow-sm transition disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer"
+              >
+                {deletingTrip ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Freeing Space...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Trip & Free Space</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

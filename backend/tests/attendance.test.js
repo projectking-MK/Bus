@@ -870,6 +870,86 @@ test('Student Attendance Percentage: Admin can edit student attendance percentag
   assert.equal(putRes.body.student.attendancePercentage, 92);
 });
 
+test('Delete Trip Attendance: Admin can delete a trip, freeing up database storage space and recalculating statistics', async () => {
+  // 1. Driver starts a new trip
+  const startTripRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'SPECIAL',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 100,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(startTripRes.status, 201);
+  const tripToDelete = startTripRes.body.trip;
+  const qrToken = startTripRes.body.initialQR.token;
+
+  // 2. Mark attendance for Student 1
+  const markRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(markRes.status, 201);
+
+  // 3. Stop the trip (completes it, increments attendedClasses & totalClasses)
+  const stopRes = await makeRequest(
+    'POST',
+    '/api/trips/stop',
+    {},
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(stopRes.status, 200);
+
+  // Verify attendance record and QR token exist in database
+  const attCountBefore = await Attendance.countDocuments({ tripId: tripToDelete._id });
+  const qrCountBefore = await QRCode.countDocuments({ tripId: tripToDelete._id });
+  assert.ok(attCountBefore >= 1);
+  assert.ok(qrCountBefore >= 1);
+
+  // 4. Non-admin (Student) attempts to delete -> 403 Forbidden
+  const studentDeleteRes = await makeRequest(
+    'DELETE',
+    `/api/trips/${tripToDelete._id}`,
+    null,
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(studentDeleteRes.status, 403);
+
+  // 5. Admin deletes the trip
+  const adminDeleteRes = await makeRequest(
+    'DELETE',
+    `/api/trips/${tripToDelete._id}`,
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(adminDeleteRes.status, 200);
+  assert.equal(adminDeleteRes.body.success, true);
+  assert.ok(adminDeleteRes.body.freedSpace.attendanceRecords >= 1);
+  assert.ok(adminDeleteRes.body.freedSpace.qrCodes >= 1);
+  assert.equal(adminDeleteRes.body.freedSpace.trips, 1);
+
+  // 6. Verify MongoDB records have been purged (freeing up space)
+  const attCountAfter = await Attendance.countDocuments({ tripId: tripToDelete._id });
+  const qrCountAfter = await QRCode.countDocuments({ tripId: tripToDelete._id });
+  const tripInDb = await BusTrip.findById(tripToDelete._id);
+
+  assert.equal(attCountAfter, 0);
+  assert.equal(qrCountAfter, 0);
+  assert.equal(tripInDb, null);
+});
+
+
 
 
 

@@ -9,6 +9,7 @@ import {
   updateGeofenceSettings,
   getBusSettings,
 } from '../controllers/adminController.js';
+import { deleteTrip } from '../controllers/tripController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -24,5 +25,6 @@ router.get('/export-credentials', exportStudentCredentials);
 router.get('/audit-logs', getAuditLogs);
 router.get('/settings', getBusSettings);
 router.put('/settings', updateGeofenceSettings);
+router.delete('/trips/:id', deleteTrip);
 
 export default router;

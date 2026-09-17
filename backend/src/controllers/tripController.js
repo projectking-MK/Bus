@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
 import { BusTrip } from '../models/BusTrip.js';
 import { Bus } from '../models/Bus.js';
 import { QRCode } from '../models/QRCode.js';
@@ -347,3 +348,89 @@ export const getAllTrips = async (req, res) => {
     });
   }
 };
+
+export const deleteTrip = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    let trip = null;
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      trip = await BusTrip.findById(id);
+    }
+    if (!trip) {
+      trip = await BusTrip.findOne({ tripId: id });
+    }
+
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found.',
+      });
+    }
+
+    const tripObjectId = trip._id;
+    const tripIdentifier = trip.tripId;
+    const tripStatus = trip.status;
+
+    // 1. If this trip was COMPLETED, adjust students' attendedClasses and totalClasses
+    if (tripStatus === 'COMPLETED') {
+      const presentRecords = await Attendance.find({
+        tripId: tripObjectId,
+        status: { $in: ['PRESENT', 'LATE'] },
+      });
+      const presentStudentIds = new Set(presentRecords.map((r) => r.studentId.toString()));
+
+      const allStudents = await Student.find({ accountStatus: 'ACTIVE' });
+      for (const student of allStudents) {
+        const wasPresent = presentStudentIds.has(student._id.toString());
+        student.totalClasses = Math.max(0, (student.totalClasses || 0) - 1);
+        if (wasPresent) {
+          student.attendedClasses = Math.max(0, (student.attendedClasses || 0) - 1);
+        }
+        student.attendancePercentage =
+          student.totalClasses > 0
+            ? Math.round((student.attendedClasses / student.totalClasses) * 100)
+            : 0;
+        await student.save();
+      }
+    }
+
+    // 2. Permanently delete all associated records to free database space
+    const attendanceDeleteResult = await Attendance.deleteMany({ tripId: tripObjectId });
+    const qrDeleteResult = await QRCode.deleteMany({ tripId: tripObjectId });
+    await BusTrip.findByIdAndDelete(tripObjectId);
+
+    // 3. Record in Audit Log
+    await AuditLog.create({
+      action: 'TRIP_ATTENDANCE_DELETED',
+      performedBy: req.user._id,
+      details: {
+        tripId: tripIdentifier,
+        deletedAttendanceCount: attendanceDeleteResult.deletedCount,
+        deletedQRCodesCount: qrDeleteResult.deletedCount,
+      },
+      ipAddress: req.ip || '',
+      status: 'SUCCESS',
+    });
+
+    res.json({
+      success: true,
+      message: `Trip ${tripIdentifier} and ${attendanceDeleteResult.deletedCount} attendance records permanently deleted. Database space has been freed.`,
+      deletedTripId: tripObjectId,
+      deletedTripIdentifier: tripIdentifier,
+      freedSpace: {
+        attendanceRecords: attendanceDeleteResult.deletedCount,
+        qrCodes: qrDeleteResult.deletedCount,
+        trips: 1,
+      },
+    });
+  } catch (error) {
+    console.error('[Delete Trip Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete trip and attendance records',
+      error: error.message,
+    });
+  }
+};
+
