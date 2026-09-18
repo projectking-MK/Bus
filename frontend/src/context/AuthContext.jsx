@@ -9,6 +9,10 @@ export const AuthProvider = ({ children }) => {
   const [student, setStudent] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('smart_bus_auth_token'));
   const [loading, setLoading] = useState(true);
+  const [studentCoords, setStudentCoords] = useState(null);
+  const [studentGpsStatus, setStudentGpsStatus] = useState('Standby');
+  const [isTripAuthenticated, setIsTripAuthenticated] = useState(true);
+  const [currentTrip, setCurrentTrip] = useState(null);
 
   // Initialize and check current auth session
   useEffect(() => {
@@ -20,11 +24,12 @@ export const AuthProvider = ({ children }) => {
           if (res.data.success) {
             setUser(res.data.user);
             setStudent(res.data.student);
+            setIsTripAuthenticated(res.data.isTripAuthenticated ?? true);
+            setCurrentTrip(res.data.activeTrip || null);
 
-            // If student, check if device needs auto-registration and auto-sync GPS location
+            // If student, verify device auto-registration
             if (res.data.user.role === 'STUDENT') {
               await checkAndRegisterDevice(res.data.student);
-              syncStudentLocation();
             }
           }
         } catch (err) {
@@ -38,27 +43,80 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const syncStudentLocation = () => {
-    if (typeof window !== 'undefined' && navigator && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            await axiosClient.post('/api/students/location', {
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            });
-          } catch (err) {
-            console.warn('[Student GPS Auto-update Error]', err.response?.data?.message || err.message);
-          }
-        },
-        (err) => {
-          console.warn('[Student GPS Notice]', err.message);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
+  // Continuous 1-second live GPS streaming for student - matches driver GPS engine exactly and never locks coordinates
+  useEffect(() => {
+    let watchId = null;
+    let intervalId = null;
+    let isBroadcasting = false;
+
+    if (user && user.role === 'STUDENT') {
+      setStudentGpsStatus('Live GPS Active (1s)...');
+
+      const sendLocationUpdate = async (lat, lon, accuracy) => {
+        if (isBroadcasting) return;
+        isBroadcasting = true;
+        try {
+          await axiosClient.post('/api/students/location', {
+            latitude: lat,
+            longitude: lon,
+            accuracy: accuracy !== undefined && accuracy !== null ? Number(accuracy) : null,
+          });
+          setStudentCoords({
+            latitude: lat,
+            longitude: lon,
+            accuracy: accuracy || null,
+            updatedAt: new Date(),
+          });
+          setStudentGpsStatus('Live GPS Active (Updated Every 1s)');
+        } catch (err) {
+          console.warn('[Student GPS Stream Error]', err.response?.data?.message || err.message);
+          setStudentGpsStatus('Retrying Live GPS...');
+        } finally {
+          isBroadcasting = false;
+        }
+      };
+
+      if (typeof window !== 'undefined' && navigator && navigator.geolocation) {
+        // 1. Continuous high-accuracy watchPosition with maximumAge: 0
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            sendLocationUpdate(latitude, longitude, accuracy);
+          },
+          (err) => {
+            console.warn('[Student GPS Watch Warning]', err.message);
+            setStudentGpsStatus('GPS Warning (Check permissions)');
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+
+        // 2. Active 1-second interval timer ensures sub-second freshness even if watchPosition throttles
+        intervalId = setInterval(() => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude, accuracy } = pos.coords;
+              sendLocationUpdate(latitude, longitude, accuracy);
+            },
+            (err) => {
+              console.warn('[Student GPS Interval Warning]', err.message);
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+          );
+        }, 1000);
+      }
+    } else {
+      setStudentGpsStatus('Inactive');
     }
-  };
+
+    return () => {
+      if (watchId !== null && typeof window !== 'undefined' && navigator?.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      if (intervalId !== null) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [user]);
 
   const checkAndRegisterDevice = async (studentDoc) => {
     const currentDeviceId = getOrCreateDeviceIdentifier();
@@ -81,18 +139,19 @@ export const AuthProvider = ({ children }) => {
       password,
     });
     if (res.data.success) {
-      const { token: newToken, user: newUser, student: newStudent } = res.data;
+      const { token: newToken, user: newUser, student: newStudent, activeTrip: tripData } = res.data;
       localStorage.setItem('smart_bus_auth_token', newToken);
       setToken(newToken);
       setUser(newUser);
       setStudent(newStudent);
+      setCurrentTrip(tripData || null);
+      setIsTripAuthenticated(true);
 
       if (newUser.role === 'STUDENT') {
         await checkAndRegisterDevice(newStudent);
-        syncStudentLocation();
       }
 
-      return { success: true, user: newUser };
+      return { success: true, user: newUser, activeTrip: tripData };
     }
     return { success: false, message: res.data.message || 'Login failed' };
   };
@@ -102,6 +161,10 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setStudent(null);
+    setStudentCoords(null);
+    setStudentGpsStatus('Inactive');
+    setIsTripAuthenticated(true);
+    setCurrentTrip(null);
   };
 
   const refreshProfile = async () => {
@@ -110,6 +173,8 @@ export const AuthProvider = ({ children }) => {
       if (res.data.success) {
         setUser(res.data.user);
         setStudent(res.data.student);
+        setIsTripAuthenticated(res.data.isTripAuthenticated ?? true);
+        setCurrentTrip(res.data.activeTrip || null);
       }
     } catch (e) {
       console.error('[Refresh Profile Error]', e);
@@ -128,6 +193,10 @@ export const AuthProvider = ({ children }) => {
         refreshProfile,
         isAuthenticated: !!user,
         deviceIdentifier: getOrCreateDeviceIdentifier(),
+        studentCoords,
+        studentGpsStatus,
+        isTripAuthenticated,
+        currentTrip,
       }}
     >
       {children}

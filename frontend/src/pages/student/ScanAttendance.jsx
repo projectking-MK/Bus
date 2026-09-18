@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
 import { QRScanner } from '../../components/QRScanner';
@@ -12,19 +12,21 @@ import {
   XCircle,
   AlertTriangle,
   ArrowLeft,
+  ArrowRight,
   ShieldCheck,
   RefreshCw,
   Bus
 } from 'lucide-react';
 
 export const ScanAttendance = () => {
-  const { user, student, deviceIdentifier } = useAuth();
+  const { user, student, deviceIdentifier, studentCoords, isTripAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   const [scanning, setScanning] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [verificationResult, setVerificationResult] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
+  const [requireTripLogin, setRequireTripLogin] = useState(false);
 
   // Proactive Location Permission state
   const [locationStatus, setLocationStatus] = useState('prompt'); // 'prompt' | 'acquiring' | 'ready' | 'denied' | 'insecure'
@@ -117,11 +119,14 @@ export const ScanAttendance = () => {
         gps: { status: 'checking', label: 'Acquiring real-time bus motion coordinates...' },
       }));
 
-      // 2. Obtain fresh GPS coordinates (ensure maximum 3-second freshness so motion on running bus is captured)
-      let position = cachedPosition;
-      const isFreshEnough = position && position.timestamp && (Date.now() - position.timestamp < 3500);
+      // 2. Obtain fresh GPS coordinates (ensure sub-second freshness so motion on running bus is captured, never locked)
+      let position = (studentCoords && studentCoords.latitude) ? studentCoords : cachedPosition;
+      const isFreshEnough = position && (
+        (position.timestamp && Date.now() - position.timestamp < 3500) ||
+        (position.updatedAt && Date.now() - new Date(position.updatedAt).getTime() < 3500)
+      );
 
-      if (!isFreshEnough) {
+      if (!isFreshEnough && !position?.latitude) {
         try {
           position = await getCurrentPosition({ timeout: 6000, maximumAge: 0, enableHighAccuracy: true });
           setCachedPosition(position);
@@ -145,7 +150,7 @@ export const ScanAttendance = () => {
         ...prev,
         gps: {
           status: 'success',
-          label: `GPS Locked (Acc: ±${position.accuracy}m)`,
+          label: `Live GPS Streamed (Acc: ±${Math.round(position.accuracy || 10)}m)`,
         },
         qr: { status: 'checking', label: 'Submitting to anti-proxy server pipeline...' },
       }));
@@ -156,7 +161,7 @@ export const ScanAttendance = () => {
         deviceIdentifier,
         latitude: position.latitude,
         longitude: position.longitude,
-        gpsAccuracy: position.accuracy,
+        gpsAccuracy: position.accuracy || 10,
       };
 
       const res = await axiosClient.post('/api/attendance/mark', payload);
@@ -177,13 +182,16 @@ export const ScanAttendance = () => {
     } catch (err) {
       console.error('[Attendance Submission Error]', err);
       const serverMessage = err.response?.data?.message || err.message || 'Verification failed.';
+      if (err.response?.data?.requireTripLogin) {
+        setRequireTripLogin(true);
+      }
       
       // Highlight which step failed based on server response
       setChecks((prev) => {
         const next = { ...prev };
         if (serverMessage.includes('device')) {
           next.device = { status: 'error', label: serverMessage };
-        } else if (serverMessage.includes('trip') || serverMessage.includes('closed')) {
+        } else if (serverMessage.includes('trip') || serverMessage.includes('closed') || serverMessage.includes('log in')) {
           next.trip = { status: 'error', label: serverMessage };
         } else if (serverMessage.includes('QR')) {
           next.qr = { status: 'error', label: serverMessage };
@@ -204,6 +212,7 @@ export const ScanAttendance = () => {
   const handleResetScan = () => {
     setVerificationResult(null);
     setErrorDetails(null);
+    setRequireTripLogin(false);
     setChecks({
       device: { status: 'pending', label: 'Registered Hardware Device' },
       trip: { status: 'pending', label: 'Active Bus Trip' },
@@ -336,6 +345,27 @@ export const ScanAttendance = () => {
             </div>
           )}
 
+          {/* Pre-scan Per-Trip Login Warning */}
+          {!isTripAuthenticated && !errorDetails && (
+            <div className="mb-4 p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-center justify-between text-xs text-amber-950 shadow-sm">
+              <div className="flex items-center space-x-2.5">
+                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <p className="font-bold">Trip Authentication Required</p>
+                  <p className="text-[11px] text-amber-750">
+                    Please log in fresh for this bus trip before marking attendance.
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/login"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm"
+              >
+                Log In
+              </Link>
+            </div>
+          )}
+
           {/* Camera Scanner View */}
           <div className="mb-6">
             <QRScanner onScanSuccess={handleScanSuccess} scanning={scanning} />
@@ -348,12 +378,24 @@ export const ScanAttendance = () => {
               <div className="flex-1">
                 <strong className="font-bold block">Validation Rejected</strong>
                 <span>{errorDetails}</span>
-                <button
-                  onClick={handleResetScan}
-                  className="mt-2 block font-semibold text-rose-700 underline hover:text-rose-900"
-                >
-                  Click here to retry scan
-                </button>
+                {requireTripLogin ? (
+                  <div className="mt-3">
+                    <Link
+                      to="/login"
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition text-xs"
+                    >
+                      <span>Log In For Current Trip</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleResetScan}
+                    className="mt-2 block font-semibold text-rose-700 underline hover:text-rose-900"
+                  >
+                    Click here to retry scan
+                  </button>
+                )}
               </div>
             </div>
           )}

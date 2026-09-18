@@ -46,6 +46,16 @@ export const markAttendance = async (req, res) => {
       });
     }
 
+    // 5a. Student Per-Trip Login Enforcement: Student must log in specifically for each active trip
+    const studentTripId = req.user.authenticatedTripId || (student.lastLoginTripId ? student.lastLoginTripId.toString() : null);
+    if (!studentTripId || studentTripId !== activeTrip._id.toString()) {
+      return res.status(401).json({
+        success: false,
+        requireTripLogin: true,
+        message: `Please log in to authenticate for ${activeTrip.sessionName || 'this active trip'} before marking attendance.`,
+      });
+    }
+
     // 5b. Anti-Proxy Single Device Check: Ensure this physical hardware device has NOT already marked attendance for ANY other student on this active trip!
     const deviceUsedOnTrip = await Attendance.findOne({
       tripId: activeTrip._id,

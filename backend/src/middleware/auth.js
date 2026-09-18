@@ -30,6 +30,7 @@ export const protect = async (req, res, next) => {
     }
 
     req.user = user;
+    req.user.authenticatedTripId = decoded.authenticatedTripId || null;
 
     // If student, attach student profile
     if (user.role === 'STUDENT') {

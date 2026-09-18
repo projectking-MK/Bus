@@ -252,6 +252,51 @@ test('4. Dynamic QR: returns active valid token with countdown (2400s = 40 mins)
   assert.equal(res.body.totalValiditySeconds, 2400);
 });
 
+test('4b. Student Per-Trip Login: Rejects attendance if student did not log in for the active trip', async () => {
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  // Attempt attendance with pre-trip student1Token
+  const res = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 12,
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+
+  assert.equal(res.status, 401);
+  assert.equal(res.body.requireTripLogin, true);
+  assert.match(res.body.message, /Please log in to authenticate for/);
+});
+
+test('4c. Student Per-Trip Login: Students log in for active trip and obtain trip-authenticated session', async () => {
+  const login1 = await makeRequest('POST', '/api/auth/login', {
+    identifier: student1.rollNumber,
+    password: 'StudentPassword123',
+  });
+  assert.equal(login1.status, 200);
+  assert.equal(login1.body.success, true);
+  assert.ok(login1.body.user.authenticatedTripId);
+  student1Token = login1.body.token;
+
+  const login2 = await makeRequest('POST', '/api/auth/login', {
+    identifier: student2.rollNumber,
+    password: 'StudentPassword123',
+  });
+  assert.equal(login2.status, 200);
+  assert.equal(login2.body.success, true);
+  assert.ok(login2.body.user.authenticatedTripId);
+  student2Token = login2.body.token;
+});
+
 test('5. Valid Attendance: Student 1 scans valid QR inside geofence with registered device', async () => {
   // Get current QR
   const qrRes = await makeRequest('GET', '/api/qr/current', null, {
@@ -467,6 +512,13 @@ test('14. Anti-Proxy: strictly prevents a single physical device from marking at
   // Configure student3 with deviceId matching student1's device to test attendance-level trip check
   await Student.updateOne({ _id: student3._id }, { deviceId: 'DEVICE_UUID_PHONE_01', deviceRegistrationStatus: true });
 
+  // Student 3 logs in for active trip
+  const log3 = await makeRequest('POST', '/api/auth/login', {
+    identifier: student3.rollNumber,
+    password: 'StudentPassword123',
+  });
+  student3Token = log3.body.token;
+
   const qrRes = await makeRequest('GET', '/api/qr/current', null, {
     Authorization: `Bearer ${driverToken}`,
   });
@@ -563,6 +615,15 @@ test('17. Trip Lifecycle: Morning Trip -> Stop -> Evening Trip starts with 0/def
   });
   assert.equal(activeRes.body.active, true);
   assert.equal(activeRes.body.stats.presentCount, 0);
+
+  // 3b. Student 1 logs in fresh for the Evening Trip (per-trip authentication)
+  const eveningLogin = await makeRequest('POST', '/api/auth/login', {
+    identifier: student1.rollNumber,
+    password: 'StudentPassword123',
+  });
+  assert.equal(eveningLogin.status, 200);
+  assert.equal(eveningLogin.body.success, true);
+  student1Token = eveningLogin.body.token;
 
   // 4. Student 1 marks attendance on the EVENING trip using their registered device
   const eveningAttendanceRes = await makeRequest(
@@ -701,6 +762,19 @@ test('GPS Range Security: validates 100m, 3km, and 100km geofence boundaries', a
   assert.equal(tripRes.status, 201);
   assert.equal(tripRes.body.trip.geofenceRadius, 3000);
   const specialQR = tripRes.body.initialQR.token;
+
+  // Log in students for this trip
+  const log1 = await makeRequest('POST', '/api/auth/login', {
+    identifier: student1.rollNumber,
+    password: 'StudentPassword123',
+  });
+  student1Token = log1.body.token;
+
+  const log2 = await makeRequest('POST', '/api/auth/login', {
+    identifier: student2.rollNumber,
+    password: 'StudentPassword123',
+  });
+  student2Token = log2.body.token;
 
   // 5. Student 1 is ~550m away (lat 13.0877): outside 100m, but INSIDE 3000m (3km)!
   const attendResInside3k = await makeRequest(
@@ -887,6 +961,13 @@ test('Delete Trip Attendance: Admin can delete a trip, freeing up database stora
   const tripToDelete = startTripRes.body.trip;
   const qrToken = startTripRes.body.initialQR.token;
 
+  // Log in student 1 for this trip
+  const logTrip = await makeRequest('POST', '/api/auth/login', {
+    identifier: student1.rollNumber,
+    password: 'StudentPassword123',
+  });
+  student1Token = logTrip.body.token;
+
   // 2. Mark attendance for Student 1
   const markRes = await makeRequest(
     'POST',
@@ -985,6 +1066,13 @@ test('25. Live Driver GPS & Running Bus Geofence: Driver updates location live a
   assert.equal(startTripRes.status, 201);
   const qrToken = startTripRes.body.initialQR.token;
 
+  // Student 2 logs in for this trip
+  const log2 = await makeRequest('POST', '/api/auth/login', {
+    identifier: student2.rollNumber,
+    password: 'StudentPassword123',
+  });
+  student2Token = log2.body.token;
+
   // 2. Bus is running: driver live location updates every second as the bus travels along route
   const updateLocRes = await makeRequest(
     'POST',
@@ -1018,6 +1106,120 @@ test('25. Live Driver GPS & Running Bus Geofence: Driver updates location live a
   assert.equal(studentScanRes.body.attendance.status, 'PRESENT');
 
   // 4. Stop the trip
+  await makeRequest('POST', '/api/trips/stop', {}, { Authorization: `Bearer ${driverToken}` });
+});
+
+test('26. Student Continuous Live GPS & Per-Trip Authentication Lifecycle: GPS is never locked and fresh login required per trip', async () => {
+  // 1. Start Trip A
+  const tripARes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'MORNING',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 100,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(tripARes.status, 201);
+  const tripAId = tripARes.body.trip._id;
+
+  // 2. Student 1 logs in for Trip A
+  const loginARes = await makeRequest('POST', '/api/auth/login', {
+    identifier: student1.rollNumber,
+    password: 'StudentPassword123',
+  });
+  assert.equal(loginARes.status, 200);
+  assert.equal(loginARes.body.user.authenticatedTripId, tripAId);
+  const tokenTripA = loginARes.body.token;
+
+  // 3. Student continuous GPS streaming: position 1 -> position 2 (never locked to login location)
+  const gps1Res = await makeRequest(
+    'POST',
+    '/api/students/location',
+    { latitude: 13.0830, longitude: 80.2710, accuracy: 8 },
+    { Authorization: `Bearer ${tokenTripA}` }
+  );
+  assert.equal(gps1Res.status, 200);
+  assert.equal(gps1Res.body.location.latitude, 13.0830);
+
+  const gps2Res = await makeRequest(
+    'POST',
+    '/api/students/location',
+    { latitude: 13.0865, longitude: 80.2745, accuracy: 5 },
+    { Authorization: `Bearer ${tokenTripA}` }
+  );
+  assert.equal(gps2Res.status, 200);
+  assert.equal(gps2Res.body.location.latitude, 13.0865);
+
+  // 4. Verify /api/auth/me reports isTripAuthenticated: true for Trip A
+  const meResA = await makeRequest('GET', '/api/auth/me', null, {
+    Authorization: `Bearer ${tokenTripA}`,
+  });
+  assert.equal(meResA.status, 200);
+  assert.equal(meResA.body.isTripAuthenticated, true);
+
+  // 5. Driver stops Trip A
+  await makeRequest('POST', '/api/trips/stop', {}, { Authorization: `Bearer ${driverToken}` });
+
+  // 6. Driver starts Trip B (new trip)
+  const tripBRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'EVENING',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 100,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(tripBRes.status, 201);
+  const tripBQR = tripBRes.body.initialQR.token;
+
+  // 7. Student attempts to mark attendance on Trip B with token from Trip A -> REJECTED (401 requireTripLogin)
+  const rejectedRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: tripBQR,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${tokenTripA}` }
+  );
+  assert.equal(rejectedRes.status, 401);
+  assert.equal(rejectedRes.body.requireTripLogin, true);
+
+  // 8. Student logs in fresh for Trip B
+  const loginBRes = await makeRequest('POST', '/api/auth/login', {
+    identifier: student1.rollNumber,
+    password: 'StudentPassword123',
+  });
+  assert.equal(loginBRes.status, 200);
+  assert.equal(loginBRes.body.user.authenticatedTripId, tripBRes.body.trip._id);
+  const tokenTripB = loginBRes.body.token;
+
+  // 9. Now Student marks attendance on Trip B -> SUCCEEDS (201)
+  const acceptedRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: tripBQR,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_01',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${tokenTripB}` }
+  );
+  assert.equal(acceptedRes.status, 201);
+  assert.equal(acceptedRes.body.success, true);
+
+  // 10. Clean up: stop Trip B
   await makeRequest('POST', '/api/trips/stop', {}, { Authorization: `Bearer ${driverToken}` });
 });
 

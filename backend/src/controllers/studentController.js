@@ -455,6 +455,15 @@ export const updateStudentLocation = async (req, res) => {
       });
     }
 
+    const latNum = Number(latitude);
+    const lonNum = Number(longitude);
+    if (isNaN(latNum) || isNaN(lonNum)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid latitude or longitude coordinates',
+      });
+    }
+
     const student = req.student || (await Student.findOne({ userId: req.user._id }));
     if (!student) {
       return res.status(404).json({
@@ -463,20 +472,29 @@ export const updateStudentLocation = async (req, res) => {
       });
     }
 
-    student.lastLatitude = Number(latitude);
-    student.lastLongitude = Number(longitude);
-    student.lastGpsAccuracy = accuracy !== undefined && accuracy !== null ? Number(accuracy) : null;
-    student.lastLocationUpdate = new Date();
-    await student.save();
+    const accuracyVal = accuracy !== undefined && accuracy !== null && !isNaN(Number(accuracy)) ? Number(accuracy) : null;
+    const now = new Date();
+
+    await Student.updateOne(
+      { _id: student._id },
+      {
+        $set: {
+          lastLatitude: latNum,
+          lastLongitude: lonNum,
+          lastGpsAccuracy: accuracyVal,
+          lastLocationUpdate: now,
+        },
+      }
+    );
 
     res.json({
       success: true,
       message: 'Student GPS location updated successfully',
       location: {
-        latitude: student.lastLatitude,
-        longitude: student.lastLongitude,
-        accuracy: student.lastGpsAccuracy,
-        updatedAt: student.lastLocationUpdate,
+        latitude: latNum,
+        longitude: lonNum,
+        accuracy: accuracyVal,
+        updatedAt: now,
       },
     });
   } catch (error) {

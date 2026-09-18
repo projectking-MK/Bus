@@ -14,11 +14,12 @@ import {
   Clock,
   ArrowRight,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Navigation,
 } from 'lucide-react';
 
 export const StudentDashboard = () => {
-  const { user, student, deviceIdentifier } = useAuth();
+  const { user, student, deviceIdentifier, studentCoords, studentGpsStatus, isTripAuthenticated } = useAuth();
   const [activeTrip, setActiveTrip] = useState(null);
   const [markedForActiveTrip, setMarkedForActiveTrip] = useState(false);
   const [activeTripRecord, setActiveTripRecord] = useState(null);
@@ -63,27 +64,8 @@ export const StudentDashboard = () => {
 
   useEffect(() => {
     fetchStudentData();
-
-    // Automatically acquire and sync student's current GPS location on dashboard mount
-    if (typeof window !== 'undefined' && navigator && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          try {
-            await axiosClient.post('/api/students/location', {
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            });
-          } catch (err) {
-            console.warn('[Student GPS Auto-update Error]', err.response?.data?.message || err.message);
-          }
-        },
-        (err) => {
-          console.warn('[Student GPS Notice]', err.message);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
-    }
+    const interval = setInterval(fetchStudentData, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const isPresentToday = todayRecord && (todayRecord.status === 'PRESENT' || todayRecord.status === 'LATE');
@@ -143,6 +125,71 @@ export const StudentDashboard = () => {
         </div>
       </div>
 
+      {/* Live Continuous GPS & Trip Authentication Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {/* Live Student GPS Card (Updated Every 1s, Never Locked) */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="flex items-center space-x-3.5 truncate">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+              <Navigation className="w-6 h-6 text-indigo-600 animate-pulse" />
+            </div>
+            <div className="truncate">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">Live Student GPS</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              </div>
+              <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
+                {studentGpsStatus || 'Live GPS Active (Updated Every 1s)'}
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                {studentCoords?.latitude
+                  ? `${studentCoords.latitude.toFixed(5)}, ${studentCoords.longitude.toFixed(5)}${studentCoords.accuracy ? ` (±${Math.round(studentCoords.accuracy)}m)` : ''}`
+                  : 'Streaming high-accuracy 1s GPS...'}
+              </p>
+            </div>
+          </div>
+          <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
+            Never Locked
+          </span>
+        </div>
+
+        {/* Per-Trip Authentication Status */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div className="flex items-center space-x-3.5 truncate">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+              activeTrip && !isTripAuthenticated ? 'bg-amber-100 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+            }`}>
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div className="truncate">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Trip Authentication</span>
+              <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
+                {activeTrip
+                  ? (isTripAuthenticated ? `${activeTrip.sessionName || 'Active Trip'} Authenticated` : 'Re-login Required')
+                  : 'Ready for Departure'}
+              </p>
+              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                {activeTrip
+                  ? (isTripAuthenticated ? 'Valid session for active trip' : 'Log in fresh for this active trip')
+                  : 'Per-trip login required on trip start'}
+              </p>
+            </div>
+          </div>
+          {activeTrip && !isTripAuthenticated ? (
+            <Link
+              to="/login"
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex-shrink-0"
+            >
+              Log In For Trip
+            </Link>
+          ) : (
+            <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-100 flex-shrink-0">
+              Verified
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Session / Active Trip Status Banner & Call to Action */}
       <div className="mb-6">
         {activeTrip ? (
@@ -162,6 +209,31 @@ export const StudentDashboard = () => {
                 </div>
               </div>
               <StatusBadge status="PRESENT" />
+            </div>
+          ) : !isTripAuthenticated ? (
+            <div className="bg-amber-50 border-2 border-amber-400 rounded-3xl p-6 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center space-x-2 text-amber-700 mb-1">
+                  <AlertCircle className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    {activeTrip.sessionName || 'Trip'} Active — Authentication Required
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-amber-950">
+                  Please Log In for This Trip
+                </h3>
+                <p className="text-xs text-amber-800 mt-0.5">
+                  As required by bus security policy, you must log in fresh for each trip before scanning attendance.
+                </p>
+              </div>
+
+              <Link
+                to="/login"
+                className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-amber-200 flex items-center justify-center space-x-2 flex-shrink-0"
+              >
+                <span>Log In For Trip</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           ) : (
             <div className="bg-white border-2 border-indigo-500 rounded-3xl p-6 shadow-lg shadow-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

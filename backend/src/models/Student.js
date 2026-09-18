@@ -102,6 +102,11 @@ const studentSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    lastLoginTripId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'BusTrip',
+      default: null,
+    },
   },
   {
     timestamps: true,

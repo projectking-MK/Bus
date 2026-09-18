@@ -1,11 +1,12 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { Student } from '../models/Student.js';
+import { BusTrip } from '../models/BusTrip.js';
 import { AuditLog } from '../models/AuditLog.js';
 
-const generateToken = (id, role, email) => {
+const generateToken = (id, role, email, authenticatedTripId = null) => {
   return jwt.sign(
-    { id, role, email },
+    { id, role, email, authenticatedTripId },
     process.env.JWT_SECRET || 'default_fallback_secret',
     { expiresIn: '7d' }
   );
@@ -93,11 +94,23 @@ export const login = async (req, res) => {
       await User.findByIdAndUpdate(user._id, { name: 'Anand' });
     }
 
-    const token = generateToken(user._id, user.role, user.email);
+    // Bind student login to current active bus trip if one is running
+    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
+    const authenticatedTripId = (user.role === 'STUDENT' && activeTrip) ? activeTrip._id.toString() : null;
+
+    const token = generateToken(user._id, user.role, user.email, authenticatedTripId);
 
     let studentData = null;
     if (user.role === 'STUDENT') {
-      studentData = await Student.findOne({ userId: user._id });
+      if (activeTrip) {
+        studentData = await Student.findOneAndUpdate(
+          { userId: user._id },
+          { $set: { lastLoginTripId: activeTrip._id } },
+          { new: true }
+        );
+      } else {
+        studentData = await Student.findOne({ userId: user._id });
+      }
     }
 
     // Log successful login
@@ -105,7 +118,7 @@ export const login = async (req, res) => {
       action: 'USER_LOGIN',
       performedBy: user._id,
       targetStudentId: studentData ? studentData._id : null,
-      details: { role: user.role, email: user.email },
+      details: { role: user.role, email: user.email, authenticatedTripId },
       ipAddress: req.ip || '',
       userAgent: req.headers['user-agent'] || '',
       status: 'SUCCESS',
@@ -120,8 +133,17 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role,
         phone: user.phone,
+        authenticatedTripId,
       },
       student: studentData,
+      activeTrip: activeTrip
+        ? {
+            id: activeTrip._id,
+            tripId: activeTrip.tripId,
+            sessionName: activeTrip.sessionName,
+            status: activeTrip.status,
+          }
+        : null,
     });
   } catch (error) {
     console.error('[Login Error]', error);
@@ -151,15 +173,38 @@ export const getMe = async (req, res) => {
     }
 
     let student = null;
+    let activeTrip = null;
+    let isTripAuthenticated = true;
 
     if (user.role === 'STUDENT') {
       student = await Student.findOne({ userId: user._id });
+      activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
+      if (activeTrip) {
+        const studentTripId = req.user.authenticatedTripId || (student?.lastLoginTripId ? student.lastLoginTripId.toString() : null);
+        isTripAuthenticated = Boolean(studentTripId && studentTripId === activeTrip._id.toString());
+      }
     }
 
     res.json({
       success: true,
-      user,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+        authenticatedTripId: req.user.authenticatedTripId || null,
+      },
       student,
+      activeTrip: activeTrip
+        ? {
+            id: activeTrip._id,
+            tripId: activeTrip.tripId,
+            sessionName: activeTrip.sessionName,
+            status: activeTrip.status,
+          }
+        : null,
+      isTripAuthenticated,
     });
   } catch (error) {
     res.status(500).json({
