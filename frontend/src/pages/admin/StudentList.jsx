@@ -38,6 +38,7 @@ export const StudentList = () => {
   const [attendanceModalStudent, setAttendanceModalStudent] = useState(null);
   const [newAttendancePct, setNewAttendancePct] = useState(75);
   const [updatingPct, setUpdatingPct] = useState(false);
+  const [unbindingAll, setUnbindingAll] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -93,6 +94,35 @@ export const StudentList = () => {
       }
     } catch (err) {
       setNotification({ type: 'error', text: err.response?.data?.message || 'Failed to reset device binding.' });
+    }
+  };
+
+  const handleUnbindAll = async () => {
+    if (
+      !window.confirm(
+        'Unbind all devices for all 55 students? Each student will be required to register their phone anew on their next login.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setUnbindingAll(true);
+      const res = await axiosClient.post('/api/devices/unbind-all');
+      if (res.data.success) {
+        setNotification({
+          type: 'success',
+          text: res.data.message || 'All devices unbound successfully. Students can now bind new devices.',
+        });
+        fetchStudents();
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to unbind all devices.',
+      });
+    } finally {
+      setUnbindingAll(false);
     }
   };
 
@@ -279,6 +309,16 @@ export const StudentList = () => {
         </div>
 
         <div className="flex items-center space-x-2.5">
+          <button
+            type="button"
+            onClick={handleUnbindAll}
+            disabled={unbindingAll}
+            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-sm transition shadow-sm flex items-center space-x-2 cursor-pointer"
+            title="Unbind all registered student devices"
+          >
+            <Smartphone className="w-4 h-4 text-amber-600" />
+            <span>{unbindingAll ? 'Unbinding...' : 'Unbind'}</span>
+          </button>
           <button
             onClick={() => setIsImportModalOpen(true)}
             className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold rounded-xl text-sm transition shadow-sm flex items-center space-x-2"

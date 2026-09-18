@@ -182,3 +182,45 @@ export const getMyDevice = async (req, res) => {
     });
   }
 };
+
+export const unbindAllDevices = async (req, res) => {
+  try {
+    const deleteResult = await Device.deleteMany({});
+    const updateResult = await Student.updateMany(
+      {},
+      {
+        $set: {
+          deviceId: null,
+          deviceRegistrationStatus: false,
+        },
+      }
+    );
+
+    await AuditLog.create({
+      action: 'ALL_DEVICES_UNBOUND_BY_ADMIN',
+      performedBy: req.user._id,
+      details: {
+        deletedDevicesCount: deleteResult.deletedCount,
+        updatedStudentsCount: updateResult.modifiedCount,
+        adminName: req.user.name,
+      },
+      ipAddress: req.ip || '',
+      status: 'SUCCESS',
+    });
+
+    res.json({
+      success: true,
+      message: `All devices unbound successfully (${deleteResult.deletedCount} devices removed, ${updateResult.modifiedCount} student accounts reset). All students can now bind new devices on next login.`,
+      deletedCount: deleteResult.deletedCount,
+      modifiedCount: updateResult.modifiedCount,
+    });
+  } catch (error) {
+    console.error('[Unbind All Devices Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to unbind all devices',
+      error: error.message,
+    });
+  }
+};
+

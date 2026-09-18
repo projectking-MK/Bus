@@ -35,6 +35,11 @@ export const AdminDashboard = () => {
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState(null);
 
+  // Unbind all devices state
+  const [isUnbindModalOpen, setIsUnbindModalOpen] = useState(false);
+  const [unbindingDevices, setUnbindingDevices] = useState(false);
+  const [unbindSuccessMsg, setUnbindSuccessMsg] = useState(null);
+
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false);
   const [exportingCreds, setExportingCreds] = useState(false);
@@ -181,6 +186,26 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleUnbindAllDevices = async () => {
+    try {
+      setUnbindingDevices(true);
+      const res = await axiosClient.post('/api/devices/unbind-all');
+      if (res.data.success) {
+        setIsUnbindModalOpen(false);
+        setUnbindSuccessMsg(
+          res.data.message ||
+            `All devices have been successfully unbound. All students can now bind new devices on next login.`
+        );
+        setTimeout(() => setUnbindSuccessMsg(null), 7000);
+        await fetchDashboard();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to unbind devices.');
+    } finally {
+      setUnbindingDevices(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     const interval = setInterval(() => {
@@ -295,8 +320,45 @@ export const AdminDashboard = () => {
           >
             <span>{exportingCSV ? 'Exporting...' : 'CSV'}</span>
           </button>
+
+          {/* Unbind All Devices Button */}
+          <button
+            type="button"
+            onClick={() => setIsUnbindModalOpen(true)}
+            disabled={unbindingDevices}
+            className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-2 cursor-pointer"
+            title="Unbind all registered devices for all students"
+          >
+            <Smartphone className="w-4 h-4 text-amber-600" />
+            <span>Unbind</span>
+          </button>
         </div>
       </div>
+
+      {/* Notifications */}
+      {unbindSuccessMsg && (
+        <div className="mb-6 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center space-x-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span className="font-semibold">{unbindSuccessMsg}</span>
+          </div>
+          <button onClick={() => setUnbindSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {deleteSuccessMsg && (
+        <div className="mb-6 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center space-x-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span className="font-semibold">{deleteSuccessMsg}</span>
+          </div>
+          <button onClick={() => setDeleteSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Trip Selector & Session Status Bar */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -814,6 +876,74 @@ export const AdminDashboard = () => {
                     <Trash2 className="w-4 h-4" />
                     <span>Delete Trip & Free Space</span>
                   </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unbind All Devices Confirmation Modal */}
+      {isUnbindModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setIsUnbindModalOpen(false)}
+              disabled={unbindingDevices}
+              className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+              <Smartphone className="w-7 h-7" />
+            </div>
+
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-extrabold text-slate-900">
+                Unbind All Student Devices?
+              </h3>
+              <p className="text-sm text-slate-600 mt-2">
+                This will release all registered physical hardware phone bindings for <strong>all 55 students</strong>.
+              </p>
+            </div>
+
+            <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 space-y-2 mb-6">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p>
+                  <strong>What happens upon unbinding:</strong>
+                </p>
+              </div>
+              <ul className="list-disc pl-5 space-y-1 text-amber-800">
+                <li>All device bindings will be cleared from the database immediately.</li>
+                <li>All students can bind their phone anew upon their next login.</li>
+                <li>All past attendance records and history remain 100% safe and intact.</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsUnbindModalOpen(false)}
+                disabled={unbindingDevices}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleUnbindAllDevices}
+                disabled={unbindingDevices}
+                className="flex-1 py-3 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm transition shadow-md shadow-amber-200 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+              >
+                {unbindingDevices ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Unbinding...</span>
+                  </>
+                ) : (
+                  <span>Yes, Unbind All</span>
                 )}
               </button>
             </div>

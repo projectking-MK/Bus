@@ -1223,6 +1223,59 @@ test('26. Student Continuous Live GPS & Per-Trip Authentication Lifecycle: GPS i
   await makeRequest('POST', '/api/trips/stop', {}, { Authorization: `Bearer ${driverToken}` });
 });
 
+test('27. Device Management: Admin unbinds all devices, clearing Device collection and resetting student registration status', async () => {
+  // 1. Verify that student1 and student2 have active device records
+  const devicesBefore = await Device.find({});
+  assert.ok(devicesBefore.length > 0, 'Should have registered devices in DB');
+
+  // 2. Non-admin (Student/Driver) attempts to unbind all devices -> REJECTED (403)
+  const forbiddenRes = await makeRequest('POST', '/api/devices/unbind-all', {}, {
+    Authorization: `Bearer ${student1Token}`,
+  });
+  assert.equal(forbiddenRes.status, 403);
+
+  // 3. Admin calls unbind-all endpoint -> SUCCEEDS (200)
+  const unbindRes = await makeRequest('POST', '/api/devices/unbind-all', {}, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(unbindRes.status, 200);
+  assert.equal(unbindRes.body.success, true);
+  assert.ok(unbindRes.body.deletedCount >= 1);
+  assert.match(unbindRes.body.message, /All devices unbound successfully/);
+
+  // 4. Verify in database: Device collection is completely empty
+  const devicesAfter = await Device.find({});
+  assert.equal(devicesAfter.length, 0, 'Device collection must be empty after unbind all');
+
+  // 5. Verify students in database: deviceId is null and deviceRegistrationStatus is false
+  const updatedStudent1 = await Student.findById(student1._id);
+  assert.equal(updatedStudent1.deviceId, null);
+  assert.equal(updatedStudent1.deviceRegistrationStatus, false);
+
+  const updatedStudent2 = await Student.findById(student2._id);
+  assert.equal(updatedStudent2.deviceId, null);
+  assert.equal(updatedStudent2.deviceRegistrationStatus, false);
+
+  // 6. Student can now bind a brand new device
+  const rebindRes = await makeRequest(
+    'POST',
+    '/api/devices/register',
+    {
+      deviceIdentifier: 'NEW_PHONE_UUID_999',
+      userAgent: 'Mozilla/5.0 NewPhoneTest',
+    },
+    { Authorization: `Bearer ${student1Token}` }
+  );
+  assert.equal(rebindRes.status, 201);
+  assert.equal(rebindRes.body.success, true);
+  assert.equal(rebindRes.body.device.deviceIdentifier, 'NEW_PHONE_UUID_999');
+
+  const student1AfterRebind = await Student.findById(student1._id);
+  assert.equal(student1AfterRebind.deviceId, 'NEW_PHONE_UUID_999');
+  assert.equal(student1AfterRebind.deviceRegistrationStatus, true);
+});
+
+
 
 
 
