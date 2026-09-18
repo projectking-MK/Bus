@@ -90,11 +90,34 @@ export const ScanAttendance = () => {
     }
 
     return () => {
-      if (watchId !== null && navigator.geolocation) {
+      if (watchId !== null && typeof window !== 'undefined' && navigator?.geolocation) {
         navigator.geolocation.clearWatch(watchId);
       }
     };
   }, []);
+
+  const requestLocation = async () => {
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
+      setLocationStatus('denied');
+      setLocationMessage('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setLocationStatus('acquiring');
+    setLocationMessage('Requesting GPS location permission...');
+
+    try {
+      const pos = await getCurrentPosition({ timeout: 8000, maximumAge: 0, enableHighAccuracy: true });
+      setCachedPosition(pos);
+      setLocationStatus('ready');
+      setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
+      setErrorDetails(null);
+    } catch (err) {
+      console.warn('[Request Location Error]', err);
+      setLocationStatus('denied');
+      setLocationMessage(err.message || 'Unable to acquire location.');
+    }
+  };
 
   const handleScanSuccess = async (scannedToken) => {
     if (submitting || !scanning) return;
@@ -113,20 +136,21 @@ export const ScanAttendance = () => {
 
     try {
       // 1. Hardware device check
+      const currentDevId = deviceIdentifier || 'unregistered-device';
       setChecks((prev) => ({
         ...prev,
-        device: { status: 'success', label: `Device Verified: ${deviceIdentifier.slice(0, 14)}...` },
+        device: { status: 'success', label: `Device Verified: ${currentDevId.slice(0, 14)}...` },
         gps: { status: 'checking', label: 'Acquiring real-time bus motion coordinates...' },
       }));
 
       // 2. Obtain fresh GPS coordinates (ensure sub-second freshness so motion on running bus is captured, never locked)
       let position = (studentCoords && studentCoords.latitude) ? studentCoords : cachedPosition;
       const isFreshEnough = position && (
-        (position.timestamp && Date.now() - position.timestamp < 3500) ||
-        (position.updatedAt && Date.now() - new Date(position.updatedAt).getTime() < 3500)
+        (position.timestamp && Date.now() - position.timestamp < 5000) ||
+        (position.updatedAt && Date.now() - new Date(position.updatedAt).getTime() < 5000)
       );
 
-      if (!isFreshEnough && !position?.latitude) {
+      if (!isFreshEnough || !position?.latitude) {
         try {
           position = await getCurrentPosition({ timeout: 6000, maximumAge: 0, enableHighAccuracy: true });
           setCachedPosition(position);
@@ -150,7 +174,7 @@ export const ScanAttendance = () => {
         ...prev,
         gps: {
           status: 'success',
-          label: `Live GPS Streamed (Acc: ±${Math.round(position.accuracy || 10)}m)`,
+          label: `Live GPS Streamed (Acc: ±${Math.round(position?.accuracy || 10)}m)`,
         },
         qr: { status: 'checking', label: 'Submitting to anti-proxy server pipeline...' },
       }));
@@ -352,7 +376,7 @@ export const ScanAttendance = () => {
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
                 <div>
                   <p className="font-bold">Trip Authentication Required</p>
-                  <p className="text-[11px] text-amber-750">
+                  <p className="text-[11px] text-amber-700">
                     Please log in fresh for this bus trip before marking attendance.
                   </p>
                 </div>

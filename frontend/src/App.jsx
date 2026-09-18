@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/Navbar';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Pages
 import { Login } from './pages/Login';
@@ -39,78 +40,80 @@ function App() {
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
           <Navbar />
           <main className="flex-1">
-            <Routes>
-              {/* Public route */}
-              <Route path="/login" element={<Login />} />
+            <ErrorBoundary>
+              <Routes>
+                {/* Public route */}
+                <Route path="/login" element={<Login />} />
 
-              {/* Root redirect */}
-              <Route path="/" element={<RootRedirect />} />
+                {/* Root redirect */}
+                <Route path="/" element={<RootRedirect />} />
 
-              {/* Admin routes */}
-              <Route
-                path="/admin/dashboard"
-                element={
-                  <ProtectedRoute allowedRoles={['ADMIN']}>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/students"
-                element={
-                  <ProtectedRoute allowedRoles={['ADMIN']}>
-                    <StudentList />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/attendance"
-                element={
-                  <ProtectedRoute allowedRoles={['ADMIN']}>
-                    <AttendanceLog />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/trips"
-                element={
-                  <ProtectedRoute allowedRoles={['ADMIN']}>
-                    <TripConfig />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Admin routes */}
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/students"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <StudentList />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/attendance"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <AttendanceLog />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin/trips"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <TripConfig />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Driver route */}
-              <Route
-                path="/driver/dashboard"
-                element={
-                  <ProtectedRoute allowedRoles={['DRIVER']}>
-                    <DriverDashboard />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Driver route */}
+                <Route
+                  path="/driver/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['DRIVER']}>
+                      <DriverDashboard />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Student routes */}
-              <Route
-                path="/student/dashboard"
-                element={
-                  <ProtectedRoute allowedRoles={['STUDENT']}>
-                    <StudentDashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/student/scan"
-                element={
-                  <ProtectedRoute allowedRoles={['STUDENT']}>
-                    <ScanAttendance />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Student routes */}
+                <Route
+                  path="/student/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['STUDENT']}>
+                      <StudentDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/student/scan"
+                  element={
+                    <ProtectedRoute allowedRoles={['STUDENT']}>
+                      <ScanAttendance />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </ErrorBoundary>
           </main>
         </div>
       </Router>

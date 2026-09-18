@@ -24,6 +24,12 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
         setCameraError(null);
         setIsInitializing(true);
 
+        const viewportEl = document.getElementById(elementId);
+        if (!viewportEl) {
+          console.warn('[QRScanner] reader-viewport element not in DOM');
+          return;
+        }
+
         const qrScanner = new Html5Qrcode(elementId);
         html5QrCodeRef.current = qrScanner;
 
@@ -33,18 +39,31 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
           aspectRatio: 1.0,
         };
 
-        await qrScanner.start(
-          { facingMode: 'environment' }, // Prefer rear mobile camera
-          config,
-          (decodedText) => {
-            if (isMounted && scanning) {
-              onScanSuccess(decodedText);
-            }
-          },
-          (errorMessage) => {
-            // Frame search error (normal)
-          }
-        );
+        // Try environment camera first (rear on mobile), fallback to user (webcam/front)
+        try {
+          await qrScanner.start(
+            { facingMode: 'environment' },
+            config,
+            (decodedText) => {
+              if (isMounted && scanning) {
+                onScanSuccess(decodedText);
+              }
+            },
+            () => {}
+          );
+        } catch (camErr) {
+          console.warn('[QR Scanner: rear camera failed, trying front/default camera]', camErr);
+          await qrScanner.start(
+            { facingMode: 'user' },
+            config,
+            (decodedText) => {
+              if (isMounted && scanning) {
+                onScanSuccess(decodedText);
+              }
+            },
+            () => {}
+          );
+        }
 
         if (isMounted) {
           isRunningRef.current = true;
@@ -69,13 +88,19 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
 
     return () => {
       isMounted = false;
-      if (html5QrCodeRef.current && isRunningRef.current) {
-        html5QrCodeRef.current
-          .stop()
-          .catch((err) => console.warn('Error stopping scanner:', err))
-          .finally(() => {
-            isRunningRef.current = false;
-          });
+      const scanner = html5QrCodeRef.current;
+      if (scanner) {
+        if (isRunningRef.current) {
+          scanner
+            .stop()
+            .catch((err) => console.warn('Error stopping scanner:', err))
+            .finally(() => {
+              isRunningRef.current = false;
+              try { scanner.clear(); } catch (_) {}
+            });
+        } else {
+          try { scanner.clear(); } catch (_) {}
+        }
       }
     };
   }, [scanning]);
@@ -119,7 +144,7 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
   return (
     <div className="w-full max-w-sm mx-auto flex flex-col items-center">
       {/* Hidden container for file decoder */}
-      <div id="qr-file-decoder-target" style={{ display: 'none' }}></div>
+      <div id="qr-file-decoder-target" className="sr-only"></div>
 
       {/* Scanner Viewport Box */}
       <div className="relative w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden shadow-xl border-4 border-white">
