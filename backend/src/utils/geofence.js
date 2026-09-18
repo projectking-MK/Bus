@@ -67,21 +67,29 @@ export const validateGeofence = (
     };
   }
 
-  const distance = calculateDistance(studentLat, studentLon, busLat, busLon);
+  const rawDistance = calculateDistance(studentLat, studentLon, busLat, busLon);
 
-  if (distance > allowedRadius) {
+  // When a vehicle is in motion, account for GPS device accuracy margin and transit timing skew
+  // between the driver device and student device (e.g. 1-2s broadcast lag and satellite centroid jitter)
+  const deviceAccuracyBuffer = Math.min(Number(accuracy) * 0.5, 25);
+  // Transit motion tolerance (35m) prevents false rejections for seated passengers on a running bus
+  const transitMotionTolerance = 35;
+  const effectiveAllowedRadius = (Number(allowedRadius) || 100) + transitMotionTolerance;
+  const adjustedDistance = Math.max(0, rawDistance - deviceAccuracyBuffer);
+
+  if (adjustedDistance > effectiveAllowedRadius) {
     const limitLabel = allowedRadius >= 1000 ? `${allowedRadius / 1000} km` : `${allowedRadius} meters`;
     return {
       isInside: false,
-      distanceMeters: distance,
+      distanceMeters: rawDistance,
       error: 'You are outside the permitted bus area.',
-      detail: `You are outside the permitted bus area (${Math.round(distance)}m away, permitted range is ${limitLabel}).`,
+      detail: `You are outside the permitted bus area (${Math.round(rawDistance)}m away, permitted range is ${limitLabel}).`,
     };
   }
 
   return {
     isInside: true,
-    distanceMeters: distance,
+    distanceMeters: rawDistance,
     error: null,
   };
 };

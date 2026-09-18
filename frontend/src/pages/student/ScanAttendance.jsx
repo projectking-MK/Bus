@@ -39,32 +39,59 @@ export const ScanAttendance = () => {
     gps: { status: 'pending', label: 'GPS Geofence & Accuracy' },
   });
 
-  // Proactively request / prompt for location
-  const requestLocation = async () => {
+  // Stream live high-precision location continuously while on Scan page
+  useEffect(() => {
+    let watchId = null;
+
     if (!isSecureOrigin()) {
       setLocationStatus('insecure');
       setLocationMessage('Browser blocks GPS on HTTP. Switch to HTTPS below.');
       return;
     }
 
-    setLocationStatus('acquiring');
-    setLocationMessage('Requesting GPS location permission...');
+    if (navigator.geolocation) {
+      setLocationStatus('acquiring');
+      setLocationMessage('Acquiring live GPS fix...');
 
-    try {
-      const pos = await getCurrentPosition({ timeout: 10000 });
-      setCachedPosition(pos);
-      setLocationStatus('ready');
-      setLocationMessage(`GPS Active (±${pos.accuracy}m)`);
-      setErrorDetails(null);
-    } catch (err) {
-      setLocationStatus('denied');
-      setLocationMessage(err.message || 'Location permission denied.');
+      // Initial fast acquisition
+      getCurrentPosition({ timeout: 6000, maximumAge: 0, enableHighAccuracy: true })
+        .then((pos) => {
+          setCachedPosition(pos);
+          setLocationStatus('ready');
+          setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
+          setErrorDetails(null);
+        })
+        .catch(() => {});
+
+      // Continuous high-precision watch while scanner is active (vital when bus is moving)
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          setCachedPosition({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy),
+            timestamp: Date.now(),
+          });
+          setLocationStatus('ready');
+          setLocationMessage(`Live GPS (±${Math.round(pos.coords.accuracy)}m)`);
+          setErrorDetails(null);
+        },
+        (err) => {
+          console.warn('[Student GPS Watch Warning]', err.message);
+          if (!cachedPosition) {
+            setLocationStatus('denied');
+            setLocationMessage(err.message || 'Location permission denied.');
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 }
+      );
     }
-  };
 
-  // Ask for location immediately when student opens the Scan page
-  useEffect(() => {
-    requestLocation();
+    return () => {
+      if (watchId !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
   const handleScanSuccess = async (scannedToken) => {
@@ -87,27 +114,30 @@ export const ScanAttendance = () => {
       setChecks((prev) => ({
         ...prev,
         device: { status: 'success', label: `Device Verified: ${deviceIdentifier.slice(0, 14)}...` },
-        gps: { status: 'checking', label: 'Acquiring high-accuracy GPS coordinates...' },
+        gps: { status: 'checking', label: 'Acquiring real-time bus motion coordinates...' },
       }));
 
-      // 2. Obtain GPS coordinates (use fresh cached position if within 60s, or fetch new)
+      // 2. Obtain fresh GPS coordinates (ensure maximum 3-second freshness so motion on running bus is captured)
       let position = cachedPosition;
-      const isCacheFresh = position && position.timestamp && (Date.now() - position.timestamp < 60000);
+      const isFreshEnough = position && position.timestamp && (Date.now() - position.timestamp < 3500);
 
-      if (!isCacheFresh) {
+      if (!isFreshEnough) {
         try {
-          position = await getCurrentPosition({ timeout: 15000 });
+          position = await getCurrentPosition({ timeout: 6000, maximumAge: 0, enableHighAccuracy: true });
           setCachedPosition(position);
           setLocationStatus('ready');
         } catch (gpsError) {
-          setChecks((prev) => ({
-            ...prev,
-            gps: { status: 'error', label: gpsError.message },
-          }));
-          setLocationStatus('denied');
-          setErrorDetails(gpsError.message);
-          setSubmitting(false);
-          return;
+          // Fallback to latest known cached position if available
+          if (!position) {
+            setChecks((prev) => ({
+              ...prev,
+              gps: { status: 'error', label: gpsError.message },
+            }));
+            setLocationStatus('denied');
+            setErrorDetails(gpsError.message);
+            setSubmitting(false);
+            return;
+          }
         }
       }
 

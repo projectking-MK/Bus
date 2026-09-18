@@ -111,35 +111,64 @@ export const DriverDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // GPS location streaming for active trip
+  // GPS location streaming for active trip - updates automatically every 1 second
   useEffect(() => {
     let watchId = null;
+    let intervalId = null;
+    let isBroadcasting = false;
 
     if (activeTrip) {
-      setLocationStatus('Streaming Driver GPS...');
+      setLocationStatus('Broadcasting Live GPS (1s)...');
 
-      const sendLocationUpdate = async (lat, lon) => {
+      const sendLocationUpdate = async (lat, lon, accuracy) => {
+        if (isBroadcasting) return;
+        isBroadcasting = true;
         try {
-          await axiosClient.post('/api/trips/location', { latitude: lat, longitude: lon });
-          setCurrentCoords({ latitude: lat, longitude: lon, updatedAt: new Date() });
-          setLocationStatus('GPS Locked & Broadcasting');
+          await axiosClient.post('/api/trips/location', {
+            latitude: lat,
+            longitude: lon,
+          });
+          setCurrentCoords({
+            latitude: lat,
+            longitude: lon,
+            accuracy: accuracy || null,
+            updatedAt: new Date(),
+          });
+          setLocationStatus('Live GPS Broadcasting (1s)');
         } catch (e) {
-          setLocationStatus('GPS Update Error');
+          setLocationStatus('Retrying Live GPS...');
+        } finally {
+          isBroadcasting = false;
         }
       };
 
       if (navigator.geolocation) {
+        // 1. Continuous high-accuracy watch
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
-            const { latitude, longitude } = pos.coords;
-            sendLocationUpdate(latitude, longitude);
+            const { latitude, longitude, accuracy } = pos.coords;
+            sendLocationUpdate(latitude, longitude, accuracy);
           },
           (err) => {
-            console.warn('[Driver GPS Warning]', err.message);
+            console.warn('[Driver GPS Watch Warning]', err.message);
             setLocationStatus('GPS Warning (Check permissions)');
           },
-          { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
+
+        // 2. Active 1-second interval timer ensures sub-second freshness even if watch throttles or vehicle speeds up
+        intervalId = setInterval(() => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const { latitude, longitude, accuracy } = pos.coords;
+              sendLocationUpdate(latitude, longitude, accuracy);
+            },
+            (err) => {
+              console.warn('[Driver GPS Interval Warning]', err.message);
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+          );
+        }, 1000);
       }
     } else {
       setLocationStatus('Inactive');
@@ -148,6 +177,9 @@ export const DriverDashboard = () => {
     return () => {
       if (watchId !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchId);
+      }
+      if (intervalId !== null) {
+        clearInterval(intervalId);
       }
     };
   }, [activeTrip?.tripId]);
@@ -162,11 +194,11 @@ export const DriverDashboard = () => {
       let initialLon = 80.2707;
 
       try {
-        const pos = await getCurrentPosition();
+        const pos = await getCurrentPosition({ enableHighAccuracy: true, maximumAge: 0, timeout: 4000 });
         initialLat = pos.latitude;
         initialLon = pos.longitude;
       } catch (gpsErr) {
-        console.warn('Could not acquire driver initial GPS, using default campus center:', gpsErr.message);
+        console.warn('Could not acquire driver initial GPS immediately, starting with default and updating live:', gpsErr.message);
       }
 
       const res = await axiosClient.post('/api/trips/start', {
@@ -183,6 +215,21 @@ export const DriverDashboard = () => {
         }
         setStats({ totalStudents: 55, presentCount: 0, absentCount: 55 });
         setAttendees([]);
+
+        // Immediately update with live location so starting coordinates are never locked
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              axiosClient.post('/api/trips/location', {
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+              }).catch(() => {});
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+          );
+        }
+
         fetchActiveTrip();
       }
     } catch (err) {
@@ -362,16 +409,16 @@ export const DriverDashboard = () => {
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div className="flex items-center justify-between text-indigo-600 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider">Bus Location</span>
-            <Navigation className="w-4 h-4 text-indigo-600" />
+            <span className="text-xs font-bold uppercase tracking-wider">Live Bus GPS</span>
+            <Navigation className={`w-4 h-4 text-indigo-600 ${activeTrip ? 'animate-pulse' : ''}`} />
           </div>
-          <p className="text-xs font-semibold text-slate-800 truncate">
+          <p className="text-xs font-bold text-slate-800 truncate">
             {locationStatus}
           </p>
           <p className="text-[11px] text-slate-500 mt-1 font-mono">
             {currentCoords
-              ? `${currentCoords.latitude.toFixed(4)}, ${currentCoords.longitude.toFixed(4)}`
-              : 'GPS streaming active'}
+              ? `${currentCoords.latitude.toFixed(5)}, ${currentCoords.longitude.toFixed(5)}${currentCoords.accuracy ? ` (±${Math.round(currentCoords.accuracy)}m)` : ''}`
+              : (activeTrip ? 'Auto-updating every second' : 'Standby')}
           </p>
         </div>
 

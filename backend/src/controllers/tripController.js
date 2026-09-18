@@ -253,21 +253,36 @@ export const updateTripLocation = async (req, res) => {
       });
     }
 
-    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
+    const latNum = Number(latitude);
+    const lonNum = Number(longitude);
+    if (isNaN(latNum) || isNaN(lonNum)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid latitude or longitude coordinates.',
+      });
+    }
+
+    const updateFields = {
+      currentLatitude: latNum,
+      currentLongitude: lonNum,
+      lastLocationUpdate: new Date(),
+    };
+    if (geofenceRadius && !isNaN(Number(geofenceRadius))) {
+      updateFields.geofenceRadius = Number(geofenceRadius);
+    }
+
+    const activeTrip = await BusTrip.findOneAndUpdate(
+      { status: 'ACTIVE' },
+      { $set: updateFields },
+      { new: true }
+    );
+
     if (!activeTrip) {
       return res.status(400).json({
         success: false,
         message: 'No active bus trip found to update location.',
       });
     }
-
-    activeTrip.currentLatitude = Number(latitude);
-    activeTrip.currentLongitude = Number(longitude);
-    if (geofenceRadius) {
-      activeTrip.geofenceRadius = Number(geofenceRadius);
-    }
-    activeTrip.lastLocationUpdate = new Date();
-    await activeTrip.save();
 
     res.json({
       success: true,

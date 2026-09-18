@@ -949,6 +949,79 @@ test('Delete Trip Attendance: Admin can delete a trip, freeing up database stora
   assert.equal(tripInDb, null);
 });
 
+test('24. Concurrent Student Logins: 55+ simultaneous student logins from the same network/IP succeed without 15-minute rate limit lockout', async () => {
+  // Simulate 55 concurrent logins from the same client IP
+  const loginPromises = [];
+  for (let i = 0; i < 55; i++) {
+    loginPromises.push(
+      makeRequest('POST', '/api/auth/login', {
+        identifier: '23CS001',
+        password: 'StudentPassword123',
+      })
+    );
+  }
+
+  const results = await Promise.all(loginPromises);
+  const successfulLogins = results.filter((r) => r.status === 200);
+  const rateLimitedLogins = results.filter((r) => r.status === 429);
+
+  assert.equal(successfulLogins.length, 55, 'All 55 students must be able to log in concurrently');
+  assert.equal(rateLimitedLogins.length, 0, 'No student should receive a 429 rate limit error');
+});
+
+test('25. Live Driver GPS & Running Bus Geofence: Driver updates location live and student attendance succeeds on running bus', async () => {
+  // 1. Driver starts a trip
+  const startTripRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'MORNING',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 100,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(startTripRes.status, 201);
+  const qrToken = startTripRes.body.initialQR.token;
+
+  // 2. Bus is running: driver live location updates every second as the bus travels along route
+  const updateLocRes = await makeRequest(
+    'POST',
+    '/api/trips/location',
+    {
+      latitude: 13.0850,
+      longitude: 80.2720,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(updateLocRes.status, 200);
+  assert.equal(updateLocRes.body.currentLocation.latitude, 13.0850);
+  assert.equal(updateLocRes.body.currentLocation.longitude, 80.2720);
+
+  // 3. Student 2 on the moving bus scans the QR code with live coordinates matching the running bus
+  const studentScanRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken,
+      deviceIdentifier: 'DEVICE_UUID_PHONE_02',
+      latitude: 13.0851, // ~15-20 meters from running bus driver position
+      longitude: 80.2721,
+      gpsAccuracy: 15,
+    },
+    { Authorization: `Bearer ${student2Token}` }
+  );
+
+  assert.equal(studentScanRes.status, 201, 'Student attendance should succeed on running bus');
+  assert.equal(studentScanRes.body.success, true);
+  assert.equal(studentScanRes.body.attendance.status, 'PRESENT');
+
+  // 4. Stop the trip
+  await makeRequest('POST', '/api/trips/stop', {}, { Authorization: `Bearer ${driverToken}` });
+});
+
+
 
 
 
