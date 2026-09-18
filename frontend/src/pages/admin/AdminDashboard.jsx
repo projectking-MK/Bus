@@ -629,7 +629,9 @@ export const AdminDashboard = () => {
                 <div className="h-8 w-px bg-white/20"></div>
                 <div className="text-center">
                   <span className="text-xs text-indigo-200 uppercase font-semibold">Geofence</span>
-                  <p className="text-sm font-bold font-mono text-white">{activeTrip.geofenceRadius}m radius</p>
+                  <p className="text-sm font-bold font-mono text-white">
+                    {activeTrip.geofenceRadius >= 1000 ? `${activeTrip.geofenceRadius / 1000}km` : `${activeTrip.geofenceRadius}m`} radius
+                  </p>
                 </div>
               </div>
             </div>

@@ -39,6 +39,14 @@ const GPS_RANGE_OPTIONS = [
     description: 'Permits students waiting at nearby intersections, shelters, and designated local bus stops within a 3km radius.',
   },
   {
+    value: 10000,
+    label: '10 Kilometer',
+    name: '10km Extended Route & Transit Zone',
+    badge: 'Extended Transit',
+    color: 'blue',
+    description: 'Permits students boarding along moving routes, suburban stops, and connecting junctions within a 10km radius.',
+  },
+  {
     value: 100000,
     label: '100 Kilometer',
     name: '100km District Transit Corridor',
@@ -640,6 +648,8 @@ export const DriverDashboard = () => {
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : opt.value === 3000
                                 ? 'bg-indigo-100 text-indigo-800'
+                                : opt.value === 10000
+                                ? 'bg-blue-100 text-blue-800'
                                 : 'bg-purple-100 text-purple-800'
                             }`}
                           >
@@ -741,6 +751,8 @@ export const DriverDashboard = () => {
                                 ? 'bg-emerald-100 text-emerald-800'
                                 : opt.value === 3000
                                 ? 'bg-indigo-100 text-indigo-800'
+                                : opt.value === 10000
+                                ? 'bg-blue-100 text-blue-800'
                                 : 'bg-purple-100 text-purple-800'
                             }`}
                           >
