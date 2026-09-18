@@ -188,7 +188,7 @@ export const markAttendance = async (req, res) => {
       });
     }
 
-    const geofenceResult = validateGeofence(
+    let geofenceResult = validateGeofence(
       sLat,
       sLon,
       sAccuracy,
@@ -197,6 +197,22 @@ export const markAttendance = async (req, res) => {
       allowedRadius,
       maxAccuracy
     );
+
+    // If check against current coordinates failed, fallback to start coordinates if available
+    if (!geofenceResult.isInside && activeTrip.startLatitude != null && activeTrip.startLongitude != null) {
+      const startResult = validateGeofence(
+        sLat,
+        sLon,
+        sAccuracy,
+        activeTrip.startLatitude,
+        activeTrip.startLongitude,
+        allowedRadius,
+        maxAccuracy
+      );
+      if (startResult.isInside) {
+        geofenceResult = startResult;
+      }
+    }
 
     if (!geofenceResult.isInside) {
       await AuditLog.create({
@@ -260,6 +276,12 @@ export const markAttendance = async (req, res) => {
         serverTime: serverTimestamp.toISOString(),
       },
     });
+
+    // Update active trip's current location with verified student's GPS on the moving bus
+    activeTrip.currentLatitude = sLat;
+    activeTrip.currentLongitude = sLon;
+    activeTrip.lastLocationUpdate = serverTimestamp;
+    await activeTrip.save();
 
     // Update registered device's lastUsedAt
     registeredDevice.lastUsedAt = serverTimestamp;

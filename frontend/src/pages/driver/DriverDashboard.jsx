@@ -61,7 +61,7 @@ export const DriverDashboard = () => {
   const [selectedSession, setSelectedSession] = useState(() => {
     return new Date().getHours() < 13 ? 'MORNING' : 'EVENING';
   });
-  const [selectedGpsRange, setSelectedGpsRange] = useState(100);
+  const [selectedGpsRange, setSelectedGpsRange] = useState(3000);
   const [isGpsModalOpen, setIsGpsModalOpen] = useState(false);
   const [isAdjustRangeModalOpen, setIsAdjustRangeModalOpen] = useState(false);
 
@@ -142,33 +142,41 @@ export const DriverDashboard = () => {
         }
       };
 
+      let lastSendTime = 0;
+      const sendLocationUpdateThrottled = (lat, lon, accuracy) => {
+        const now = Date.now();
+        if (now - lastSendTime < 2000) return;
+        lastSendTime = now;
+        sendLocationUpdate(lat, lon, accuracy);
+      };
+
       if (navigator.geolocation) {
         // 1. Continuous high-accuracy watch
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude, accuracy } = pos.coords;
-            sendLocationUpdate(latitude, longitude, accuracy);
+            sendLocationUpdateThrottled(latitude, longitude, accuracy);
           },
           (err) => {
             console.warn('[Driver GPS Watch Warning]', err.message);
             setLocationStatus('GPS Warning (Check permissions)');
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
         );
 
-        // 2. Active 1-second interval timer ensures sub-second freshness even if watch throttles or vehicle speeds up
+        // 2. Active fallback timer ensures fresh coordinates even when stationary or watch throttles
         intervalId = setInterval(() => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const { latitude, longitude, accuracy } = pos.coords;
-              sendLocationUpdate(latitude, longitude, accuracy);
+              sendLocationUpdateThrottled(latitude, longitude, accuracy);
             },
             (err) => {
               console.warn('[Driver GPS Interval Warning]', err.message);
             },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+            { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 }
           );
-        }, 1000);
+        }, 10000);
       }
     } else {
       setLocationStatus('Inactive');
@@ -194,11 +202,21 @@ export const DriverDashboard = () => {
       let initialLon = 80.2707;
 
       try {
-        const pos = await getCurrentPosition({ enableHighAccuracy: true, maximumAge: 0, timeout: 4000 });
+        const pos = await getCurrentPosition({ enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 });
         initialLat = pos.latitude;
         initialLon = pos.longitude;
       } catch (gpsErr) {
-        console.warn('Could not acquire driver initial GPS immediately, starting with default and updating live:', gpsErr.message);
+        try {
+          const raw = localStorage.getItem('smart_bus_last_gps');
+          if (raw) {
+            const saved = JSON.parse(raw);
+            if (saved?.latitude) {
+              initialLat = saved.latitude;
+              initialLon = saved.longitude;
+            }
+          }
+        } catch (_) {}
+        console.warn('Could not acquire driver initial GPS immediately, using best known coordinates:', gpsErr.message);
       }
 
       const res = await axiosClient.post('/api/trips/start', {
@@ -226,7 +244,7 @@ export const DriverDashboard = () => {
               }).catch(() => {});
             },
             () => {},
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+            { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 }
           );
         }
 

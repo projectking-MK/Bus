@@ -241,7 +241,7 @@ test('3. Bus Trip: Driver starts trip and dynamic QR is generated', async () => 
   activeTrip = res.body.trip;
 });
 
-test('4. Dynamic QR: returns active valid token with countdown (2400s = 40 mins)', async () => {
+test('4. Dynamic QR: returns active valid token with countdown (3000s = 50 mins)', async () => {
   const res = await makeRequest('GET', '/api/qr/current', null, {
     Authorization: `Bearer ${driverToken}`,
   });
@@ -249,7 +249,7 @@ test('4. Dynamic QR: returns active valid token with countdown (2400s = 40 mins)
   assert.equal(res.status, 200);
   assert.ok(res.body.token);
   assert.ok(res.body.remainingSeconds > 0);
-  assert.equal(res.body.totalValiditySeconds, 2400);
+  assert.equal(res.body.totalValiditySeconds, 3000);
 });
 
 test('4b. Student Per-Trip Login: Rejects attendance if student did not log in for the active trip', async () => {

@@ -40,6 +40,11 @@ export const AdminDashboard = () => {
   const [unbindingDevices, setUnbindingDevices] = useState(false);
   const [unbindSuccessMsg, setUnbindSuccessMsg] = useState(null);
 
+  // Clear all attendance percentages state
+  const [isClearPctModalOpen, setIsClearPctModalOpen] = useState(false);
+  const [clearingPct, setClearingPct] = useState(false);
+  const [clearPctSuccessMsg, setClearPctSuccessMsg] = useState(null);
+
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false);
   const [exportingCreds, setExportingCreds] = useState(false);
@@ -206,6 +211,25 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleClearAllAttendancePercentages = async () => {
+    try {
+      setClearingPct(true);
+      const res = await axiosClient.post('/api/students/clear-attendance-percentage');
+      if (res.data.success) {
+        setIsClearPctModalOpen(false);
+        setClearPctSuccessMsg(
+          res.data.message || 'Attendance percentages for all students have been cleared to 0%.'
+        );
+        setTimeout(() => setClearPctSuccessMsg(null), 7000);
+        await fetchDashboard();
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to clear attendance percentages.');
+    } finally {
+      setClearingPct(false);
+    }
+  };
+
   useEffect(() => {
     fetchDashboard();
     const interval = setInterval(() => {
@@ -332,10 +356,34 @@ export const AdminDashboard = () => {
             <Smartphone className="w-4 h-4 text-amber-600" />
             <span>Unbind</span>
           </button>
+
+          {/* Clear Attendance Percentage Button */}
+          <button
+            type="button"
+            onClick={() => setIsClearPctModalOpen(true)}
+            disabled={clearingPct}
+            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 rounded-xl text-sm font-bold transition shadow-sm flex items-center space-x-2 cursor-pointer"
+            title="Clear attendance percentage for all students to 0%"
+          >
+            <Percent className="w-4 h-4 text-rose-600" />
+            <span>Clear Attendance %</span>
+          </button>
         </div>
       </div>
 
       {/* Notifications */}
+      {clearPctSuccessMsg && (
+        <div className="mb-6 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center space-x-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span className="font-semibold">{clearPctSuccessMsg}</span>
+          </div>
+          <button onClick={() => setClearPctSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {unbindSuccessMsg && (
         <div className="mb-6 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
           <div className="flex items-center space-x-2.5">
@@ -944,6 +992,74 @@ export const AdminDashboard = () => {
                   </>
                 ) : (
                   <span>Yes, Unbind All</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear All Attendance Percentages Confirmation Modal */}
+      {isClearPctModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setIsClearPctModalOpen(false)}
+              disabled={clearingPct}
+              className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+              <Percent className="w-7 h-7" />
+            </div>
+
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-extrabold text-slate-900">
+                Clear All Attendance Percentages?
+              </h3>
+              <p className="text-sm text-slate-600 mt-2">
+                This will reset the overall attendance percentage to <strong>0%</strong> for <strong>all 55 students</strong>.
+              </p>
+            </div>
+
+            <div className="bg-rose-50/80 border border-rose-200 rounded-2xl p-4 text-xs text-rose-900 space-y-2 mb-6">
+              <div className="flex items-start space-x-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                <p>
+                  <strong>What happens upon clearing:</strong>
+                </p>
+              </div>
+              <ul className="list-disc pl-5 space-y-1 text-rose-800">
+                <li>All students' attendance percentages will be reset to 0%.</li>
+                <li>Attended classes count will be reset to 0.</li>
+                <li>You can recalculate or edit individual percentages at any time.</li>
+              </ul>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsClearPctModalOpen(false)}
+                disabled={clearingPct}
+                className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAllAttendancePercentages}
+                disabled={clearingPct}
+                className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition shadow-md shadow-rose-200 flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer"
+              >
+                {clearingPct ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Clearing...</span>
+                  </>
+                ) : (
+                  <span>Yes, Clear All to 0%</span>
                 )}
               </button>
             </div>

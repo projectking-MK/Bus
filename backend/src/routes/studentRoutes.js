@@ -5,6 +5,7 @@ import {
   createStudent,
   updateStudent,
   updateStudentAttendancePercentage,
+  clearAllAttendancePercentages,
   deleteStudent,
   importStudents,
   getStudentTemplate,
@@ -19,6 +20,8 @@ router.use(protect);
 router.post('/location', authorize('STUDENT', 'ADMIN'), updateStudentLocation);
 router.get('/template', authorize('ADMIN'), getStudentTemplate);
 router.post('/import', authorize('ADMIN'), importStudents);
+router.post('/clear-attendance-percentage', authorize('ADMIN'), clearAllAttendancePercentages);
+router.post('/clear-attendance-percentages', authorize('ADMIN'), clearAllAttendancePercentages);
 router.get('/', authorize('ADMIN'), getAllStudents);
 router.post('/', authorize('ADMIN'), createStudent);
 router.get('/:id', getStudentById);

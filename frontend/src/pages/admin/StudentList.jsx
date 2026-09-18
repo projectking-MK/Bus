@@ -126,6 +126,32 @@ export const StudentList = () => {
     }
   };
 
+  const handleClearAllPercentages = async () => {
+    if (
+      !window.confirm(
+        'Clear attendance percentage for all students to 0%? This will reset all students attendance percentages, attended classes, and total classes to 0.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await axiosClient.post('/api/students/clear-attendance-percentage');
+      if (res.data.success) {
+        setNotification({
+          type: 'success',
+          text: res.data.message || 'Successfully cleared attendance percentages for all students to 0%.',
+        });
+        fetchStudents();
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to clear attendance percentages.',
+      });
+    }
+  };
+
   const handleSaveStudent = async (e) => {
     e.preventDefault();
     try {
@@ -318,6 +344,15 @@ export const StudentList = () => {
           >
             <Smartphone className="w-4 h-4 text-amber-600" />
             <span>{unbindingAll ? 'Unbinding...' : 'Unbind'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleClearAllPercentages}
+            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 font-bold rounded-xl text-sm transition shadow-sm flex items-center space-x-2 cursor-pointer"
+            title="Clear attendance percentage for all students to 0%"
+          >
+            <Percent className="w-4 h-4 text-rose-600" />
+            <span>Clear Attendance %</span>
           </button>
           <button
             onClick={() => setIsImportModalOpen(true)}

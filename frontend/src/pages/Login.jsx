@@ -132,7 +132,7 @@ export const Login = () => {
             <span>Hardware Device Binding</span>
           </span>
           <span>•</span>
-          <span>40-Min Dynamic QR</span>
+          <span>Dynamic QR Attendance</span>
           <span>•</span>
           <span>GPS Geofencing</span>
         </div>

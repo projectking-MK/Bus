@@ -505,3 +505,38 @@ export const updateStudentLocation = async (req, res) => {
     });
   }
 };
+
+export const clearAllAttendancePercentages = async (req, res) => {
+  try {
+    const result = await Student.updateMany({}, {
+      $set: {
+        attendancePercentage: 0,
+        attendedClasses: 0,
+        totalClasses: 0,
+      },
+    });
+
+    await AuditLog.create({
+      action: 'ALL_ATTENDANCE_PERCENTAGES_CLEARED',
+      performedBy: req.user._id,
+      details: {
+        modifiedCount: result.modifiedCount ?? result.nModified ?? 0,
+      },
+      ipAddress: req.ip || '',
+      status: 'SUCCESS',
+    });
+
+    res.json({
+      success: true,
+      message: `Successfully cleared attendance percentage to 0% for all students.`,
+      clearedCount: result.modifiedCount ?? result.nModified ?? 0,
+    });
+  } catch (error) {
+    console.error('[Clear All Attendance Percentages Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear attendance percentages for all students',
+      error: error.message,
+    });
+  }
+};

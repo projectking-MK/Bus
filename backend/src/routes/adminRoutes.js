@@ -11,6 +11,7 @@ import {
 } from '../controllers/adminController.js';
 import { deleteTrip } from '../controllers/tripController.js';
 import { unbindAllDevices } from '../controllers/deviceController.js';
+import { clearAllAttendancePercentages } from '../controllers/studentController.js';
 import { protect, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -29,5 +30,8 @@ router.put('/settings', updateGeofenceSettings);
 router.delete('/trips/:id', deleteTrip);
 router.post('/devices/unbind-all', unbindAllDevices);
 router.post('/unbind-devices', unbindAllDevices);
+router.post('/clear-attendance-percentage', clearAllAttendancePercentages);
+router.post('/clear-attendance-percentages', clearAllAttendancePercentages);
+router.post('/students/clear-attendance-percentage', clearAllAttendancePercentages);
 
 export default router;

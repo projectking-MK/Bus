@@ -29,8 +29,14 @@ export const ScanAttendance = () => {
   const [requireTripLogin, setRequireTripLogin] = useState(false);
 
   // Proactive Location Permission state
-  const [locationStatus, setLocationStatus] = useState('prompt'); // 'prompt' | 'acquiring' | 'ready' | 'denied' | 'insecure'
-  const [cachedPosition, setCachedPosition] = useState(null);
+  const [cachedPosition, setCachedPosition] = useState(() => {
+    try {
+      const raw = localStorage.getItem('smart_bus_last_gps');
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+      return null;
+    }
+  });
   const [locationMessage, setLocationMessage] = useState('');
 
   // Status checks for visual progression
@@ -56,7 +62,7 @@ export const ScanAttendance = () => {
       setLocationMessage('Acquiring live GPS fix...');
 
       // Initial fast acquisition
-      getCurrentPosition({ timeout: 6000, maximumAge: 0, enableHighAccuracy: true })
+      getCurrentPosition({ timeout: 8000, maximumAge: 60000, enableHighAccuracy: true })
         .then((pos) => {
           setCachedPosition(pos);
           setLocationStatus('ready');
@@ -68,24 +74,24 @@ export const ScanAttendance = () => {
       // Continuous high-precision watch while scanner is active (vital when bus is moving)
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          setCachedPosition({
+          const freshPos = {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
-            accuracy: Math.round(pos.coords.accuracy),
+            accuracy: Math.round(pos.coords.accuracy || 15),
             timestamp: Date.now(),
-          });
+          };
+          setCachedPosition(freshPos);
+          try {
+            localStorage.setItem('smart_bus_last_gps', JSON.stringify(freshPos));
+          } catch (_) {}
           setLocationStatus('ready');
-          setLocationMessage(`Live GPS (±${Math.round(pos.coords.accuracy)}m)`);
+          setLocationMessage(`Live GPS (±${freshPos.accuracy}m)`);
           setErrorDetails(null);
         },
         (err) => {
           console.warn('[Student GPS Watch Warning]', err.message);
-          if (!cachedPosition) {
-            setLocationStatus('denied');
-            setLocationMessage(err.message || 'Location permission denied.');
-          }
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 }
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
       );
     }
 
@@ -107,7 +113,7 @@ export const ScanAttendance = () => {
     setLocationMessage('Requesting GPS location permission...');
 
     try {
-      const pos = await getCurrentPosition({ timeout: 8000, maximumAge: 0, enableHighAccuracy: true });
+      const pos = await getCurrentPosition({ timeout: 10000, maximumAge: 60000, enableHighAccuracy: true });
       setCachedPosition(pos);
       setLocationStatus('ready');
       setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
@@ -145,19 +151,28 @@ export const ScanAttendance = () => {
 
       // 2. Obtain fresh GPS coordinates (ensure sub-second freshness so motion on running bus is captured, never locked)
       let position = (studentCoords && studentCoords.latitude) ? studentCoords : cachedPosition;
-      const isFreshEnough = position && (
-        (position.timestamp && Date.now() - position.timestamp < 5000) ||
-        (position.updatedAt && Date.now() - new Date(position.updatedAt).getTime() < 5000)
+      if (!position?.latitude) {
+        try {
+          const raw = localStorage.getItem('smart_bus_last_gps');
+          if (raw) position = JSON.parse(raw);
+        } catch (_) {}
+      }
+
+      const isUsable = position && position.latitude && (
+        (position.timestamp && Date.now() - position.timestamp < 120000) ||
+        (position.updatedAt && Date.now() - new Date(position.updatedAt).getTime() < 120000)
       );
 
-      if (!isFreshEnough || !position?.latitude) {
+      if (!isUsable || !position?.latitude) {
         try {
-          position = await getCurrentPosition({ timeout: 6000, maximumAge: 0, enableHighAccuracy: true });
+          position = await getCurrentPosition({ timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
           setCachedPosition(position);
           setLocationStatus('ready');
         } catch (gpsError) {
           // Fallback to latest known cached position if available
-          if (!position) {
+          if (position?.latitude) {
+            console.warn('[ScanAttendance] Using cached transit GPS fix:', gpsError.message);
+          } else {
             setChecks((prev) => ({
               ...prev,
               gps: { status: 'error', label: gpsError.message },

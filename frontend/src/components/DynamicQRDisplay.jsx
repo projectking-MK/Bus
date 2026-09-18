@@ -5,7 +5,7 @@ import { RefreshCw, Clock, ShieldCheck, AlertCircle, Download, Copy, Check } fro
 
 export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
   const [qrData, setQrData] = useState(null);
-  const [remainingSeconds, setRemainingSeconds] = useState(2400);
+  const [remainingSeconds, setRemainingSeconds] = useState(3000);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState(null);
@@ -19,7 +19,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
       const res = await axiosClient.get('/api/qr/current');
       if (res.data.success) {
         setQrData(res.data);
-        const secs = res.data.remainingSeconds || 2400;
+        const secs = res.data.remainingSeconds || 3000;
         setRemainingSeconds(secs);
         if (onTokenChange) onTokenChange(res.data.token);
 
@@ -66,9 +66,9 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
     timerRef.current = setInterval(() => {
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
-          // Token expired, immediately fetch the new active token (40-minute TTL)
+          // Token expired, immediately fetch the new active token (50-minute TTL)
           fetchCurrentQR();
-          return 2400;
+          return 3000;
         }
         return prev - 1;
       });
@@ -79,7 +79,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
     };
   }, [qrData?.token]);
 
-  const totalSeconds = qrData?.totalValiditySeconds || 2400;
+  const totalSeconds = qrData?.totalValiditySeconds || 3000;
   const percentageRemaining = Math.max(0, Math.min(100, (remainingSeconds / totalSeconds) * 100));
 
   // Friendly time format: e.g. "19m 45s" or "45s"
@@ -165,7 +165,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
       // Validity & instructions badge
       ctx.fillStyle = '#10b981'; // Emerald
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('⏳ VALID FOR 20 MINUTES', canvas.width / 2, 600);
+      ctx.fillText('⏳ VALID FOR 50 MINUTES', canvas.width / 2, 600);
 
       ctx.fillStyle = '#475569';
       ctx.font = '13px sans-serif';
@@ -204,7 +204,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2 text-indigo-600">
           <ShieldCheck className="w-5 h-5" />
-          <span className="text-xs font-bold uppercase tracking-wider">Anti-Proxy QR (20-Min TTL)</span>
+          <span className="text-xs font-bold uppercase tracking-wider">Anti-Proxy QR (50-Min TTL)</span>
         </div>
         <button
           onClick={fetchCurrentQR}
@@ -224,7 +224,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
       ) : loading && !qrData ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-3">
           <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-          <p className="text-sm font-medium text-slate-500">Generating secure 3-minute QR token...</p>
+          <p className="text-sm font-medium text-slate-500">Generating secure 50-minute QR token...</p>
         </div>
       ) : (
         <>
@@ -268,7 +268,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
           </div>
 
           <p className="text-[11px] text-slate-500 mt-2">
-            💡 Download & send to students. They have <strong>40 minutes</strong> to scan and mark attendance!
+            💡 Download & send to students. They have <strong>50 minutes</strong> to scan and mark attendance!
           </p>
 
           {/* Countdown timer & progress bar */}
@@ -297,7 +297,7 @@ export const DynamicQRDisplay = ({ activeTrip, onTokenChange }) => {
           {/* Token info banner */}
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
             <span>Trip: <strong className="text-slate-700 font-mono">{activeTrip?.tripId || 'ACTIVE'}</strong></span>
-            <span>Window: <strong className="text-indigo-600 font-mono">40 Mins (2400s)</strong></span>
+            <span>Window: <strong className="text-indigo-600 font-mono">50 Mins (3000s)</strong></span>
           </div>
         </>
       )}

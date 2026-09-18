@@ -16,46 +16,85 @@ export const isSecureOrigin = () => {
 
 export const getCurrentPosition = (options = {}) => {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
       return reject(new Error('Geolocation is not supported by your browser.'));
     }
 
+    // Check last cached GPS in localStorage first as a safe baseline
+    let savedGps = null;
+    try {
+      const raw = localStorage.getItem('smart_bus_last_gps');
+      if (raw) savedGps = JSON.parse(raw);
+    } catch (_) {}
+
     const defaultOptions = {
       enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
+      timeout: 8000,
+      maximumAge: 60000, // Accept cached GPS up to 60s while traveling in moving bus
       ...options,
     };
 
+    // First attempt: High accuracy
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        resolve({
+        const result = {
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude,
-          accuracy: Math.round(pos.coords.accuracy),
-          timestamp: pos.timestamp,
-        });
+          accuracy: Math.round(pos.coords.accuracy || 15),
+          timestamp: pos.timestamp || Date.now(),
+        };
+        try {
+          localStorage.setItem('smart_bus_last_gps', JSON.stringify(result));
+        } catch (_) {}
+        resolve(result);
       },
       (error) => {
-        let msg = 'Failed to obtain GPS location.';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            if (!isSecureOrigin()) {
-              msg = 'Location permission is blocked on HTTP. Please switch to HTTPS or allow it in browser settings.';
-            } else {
-              msg = 'Location permission was denied. Please allow location access in your browser settings to mark attendance.';
+        // If high accuracy timed out or failed inside moving bus, try immediate fallback with cellular/wifi assisted GPS
+        console.warn('[Geolocation] High accuracy GPS unavailable/timed out on moving bus, attempting network fallback...', error.message);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const result = {
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: Math.round(pos.coords.accuracy || 35),
+              timestamp: pos.timestamp || Date.now(),
+            };
+            try {
+              localStorage.setItem('smart_bus_last_gps', JSON.stringify(result));
+            } catch (_) {}
+            resolve(result);
+          },
+          (fallbackErr) => {
+            // If even fallback failed, but we have a recently saved GPS coordinate from this trip, use it!
+            if (savedGps && savedGps.latitude && (Date.now() - (savedGps.timestamp || 0) < 600000)) {
+              console.warn('[Geolocation] Using saved moving bus GPS coordinate as resilient fallback');
+              return resolve(savedGps);
             }
-            break;
-          case error.POSITION_UNAVAILABLE:
-            msg = 'Location information is currently unavailable. Please ensure your device GPS is turned on.';
-            break;
-          case error.TIMEOUT:
-            msg = 'GPS location request timed out. Please retry with a clearer sky view or WiFi enabled.';
-            break;
-          default:
-            msg = error.message || msg;
-        }
-        reject(new Error(msg));
+
+            let msg = 'Failed to obtain GPS location.';
+            const code = fallbackErr?.code || error?.code;
+            switch (code) {
+              case 1: // PERMISSION_DENIED
+                msg = !isSecureOrigin()
+                  ? 'Location permission is blocked on HTTP. Please switch to HTTPS.'
+                  : 'Location permission was denied. Please allow location access in browser settings.';
+                break;
+              case 2: // POSITION_UNAVAILABLE
+                msg = 'Location information is currently unavailable. Please turn on device GPS.';
+                break;
+              case 3: // TIMEOUT
+                if (savedGps && savedGps.latitude) {
+                  return resolve(savedGps);
+                }
+                msg = 'GPS request timed out. Please ensure device Location/GPS is turned on.';
+                break;
+              default:
+                msg = fallbackErr?.message || error?.message || msg;
+            }
+            reject(new Error(msg));
+          },
+          { enableHighAccuracy: false, timeout: 6000, maximumAge: 180000 }
+        );
       },
       defaultOptions
     );

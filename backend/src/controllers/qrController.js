@@ -12,7 +12,7 @@ export const getCurrentQR = async (req, res) => {
       });
     }
 
-    const expiryWindow = parseInt(process.env.QR_EXPIRY_SECONDS || '2400', 10);
+    const expiryWindow = parseInt(process.env.QR_EXPIRY_SECONDS || '3000', 10);
     const now = new Date();
 
     // Check for an existing valid QR token for this trip
