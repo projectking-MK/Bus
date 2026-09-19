@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
+import { QRScanner } from '../../components/QRScanner';
 import { getCurrentPosition, isSecureOrigin, isLocationOffError, openDeviceLocationSettings } from '../../utils/geolocation';
 import { LocationSettingsModal } from '../../components/LocationSettingsModal';
 import {
