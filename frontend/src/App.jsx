@@ -139,7 +139,7 @@ const AppContent = () => {
               Kowshiek R
             </p>
             <p className="text-xs text-slate-500 font-semibold">
-              Department of Information Technology
+              Department of IT
             </p>
           </div>
         </footer>

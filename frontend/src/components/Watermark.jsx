@@ -43,7 +43,7 @@ export const Watermark = () => {
               isLoginPage ? 'text-emerald-300/85' : 'text-slate-500'
             }`}
           >
-            Department of Information Technology
+            Department of IT
           </p>
         </div>
       </aside>

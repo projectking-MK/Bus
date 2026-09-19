@@ -184,7 +184,7 @@ export const Login = () => {
             Kowshiek R
           </p>
           <p className="text-xs text-emerald-200/80 font-semibold mt-0.5">
-            Department of Information Technology
+            Department of IT
           </p>
         </div>
       </div>
