@@ -174,6 +174,19 @@ export const Login = () => {
           <span className="text-yellow-400/60">•</span>
           <span>GPS Geofencing</span>
         </div>
+
+        {/* Developer Attribution Watermark */}
+        <div className="mt-8 text-center pt-5 border-t border-emerald-800/40">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-yellow-400/85">
+            Developed and Maintained by
+          </p>
+          <p className="text-sm sm:text-base font-black text-yellow-300 tracking-wide mt-0.5">
+            Kowshiek R
+          </p>
+          <p className="text-xs text-emerald-200/80 font-semibold mt-0.5">
+            Department of Information Technology
+          </p>
+        </div>
       </div>
     </div>
   );
