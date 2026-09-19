@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
-import { QRScanner } from '../../components/QRScanner';
-import { getCurrentPosition, isSecureOrigin, isLocationOffError } from '../../utils/geolocation';
+import { getCurrentPosition, isSecureOrigin, isLocationOffError, openDeviceLocationSettings } from '../../utils/geolocation';
+import { LocationSettingsModal } from '../../components/LocationSettingsModal';
 import {
   QrCode,
   MapPin,
@@ -38,6 +38,7 @@ export const ScanAttendance = () => {
 
   // Proactive Location Permission state
   const [isLocationOff, setIsLocationOff] = useState(isLocationTurnedOff || false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [locationStatus, setLocationStatus] = useState('acquiring');
   const [cachedPosition, setCachedPosition] = useState(() => {
     try {
@@ -134,6 +135,7 @@ export const ScanAttendance = () => {
       setLocationStatus('ready');
       setIsLocationOff(false);
       if (setIsLocationTurnedOff) setIsLocationTurnedOff(false);
+      setShowSettingsModal(false);
       setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
       setErrorDetails(null);
     } catch (err) {
@@ -148,6 +150,12 @@ export const ScanAttendance = () => {
           : (err.message || 'Unable to acquire location.')
       );
     }
+  };
+
+  const handleTurnOnLocationClick = () => {
+    openDeviceLocationSettings();
+    setShowSettingsModal(true);
+    requestLocation();
   };
 
   const handleScanSuccess = async (scannedToken) => {
@@ -370,7 +378,7 @@ export const ScanAttendance = () => {
                 </div>
               </div>
               <button
-                onClick={requestLocation}
+                onClick={handleTurnOnLocationClick}
                 className="self-stretch sm:self-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm cursor-pointer whitespace-nowrap"
               >
                 Turn On Location & Validate
@@ -541,6 +549,15 @@ export const ScanAttendance = () => {
           </div>
         </>
       )}
+
+      {/* Location Settings & Turn On Guide Modal */}
+      <LocationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onValidate={requestLocation}
+        isValidating={locationStatus === 'acquiring'}
+        validationError={isLocationOff ? 'Device Location / GPS is turned OFF. Please turn on Location in your phone settings.' : errorDetails}
+      />
     </div>
   );
 };

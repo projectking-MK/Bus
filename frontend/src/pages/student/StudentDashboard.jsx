@@ -18,7 +18,8 @@ import {
   AlertTriangle,
   Navigation,
 } from 'lucide-react';
-import { getCurrentPosition, isLocationOffError } from '../../utils/geolocation';
+import { getCurrentPosition, isLocationOffError, openDeviceLocationSettings } from '../../utils/geolocation';
+import { LocationSettingsModal } from '../../components/LocationSettingsModal';
 
 export const StudentDashboard = () => {
   const {
@@ -42,6 +43,7 @@ export const StudentDashboard = () => {
   const [isValidatingGps, setIsValidatingGps] = useState(false);
   const [gpsValidationResult, setGpsValidationResult] = useState(null);
   const [locationWarning, setLocationWarning] = useState(null);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const fetchStudentData = async () => {
     try {
@@ -103,6 +105,7 @@ export const StudentDashboard = () => {
       if (setIsLocationTurnedOff) {
         setIsLocationTurnedOff(false);
       }
+      setShowSettingsModal(false);
       if (activeTrip?._id) {
         sessionStorage.setItem(`smart_bus_trip_gps_validated_${activeTrip._id}`, 'true');
       }
@@ -124,6 +127,12 @@ export const StudentDashboard = () => {
     } finally {
       setIsValidatingGps(false);
     }
+  };
+
+  const handleTurnOnLocationClick = () => {
+    openDeviceLocationSettings();
+    setShowSettingsModal(true);
+    validateTripLocation();
   };
 
   // Prompt location permission and validate GPS on every trip login
@@ -214,7 +223,7 @@ export const StudentDashboard = () => {
             </div>
           </div>
           <button
-            onClick={validateTripLocation}
+            onClick={handleTurnOnLocationClick}
             disabled={isValidatingGps}
             className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-2xl text-xs flex items-center space-x-2 shadow-md shadow-rose-200 flex-shrink-0 transition cursor-pointer"
           >
@@ -305,11 +314,11 @@ export const StudentDashboard = () => {
           </div>
           {isLocationTurnedOff || locationWarning ? (
             <button
-              onClick={validateTripLocation}
+              onClick={handleTurnOnLocationClick}
               disabled={isValidatingGps}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-600 hover:bg-rose-700 text-white flex-shrink-0 transition shadow-sm"
+              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-600 hover:bg-rose-700 text-white flex-shrink-0 transition shadow-sm cursor-pointer"
             >
-              Validate
+              Turn ON
             </button>
           ) : (
             <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
@@ -504,6 +513,15 @@ export const StudentDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Location Settings & Turn On Guide Modal */}
+      <LocationSettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        onValidate={validateTripLocation}
+        isValidating={isValidatingGps}
+        validationError={locationWarning}
+      />
     </div>
   );
 };

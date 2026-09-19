@@ -116,3 +116,25 @@ export const isLocationOffError = (error) => {
     /location.*(off|disabled|unavailable|denied|turned off)/i.test(error.message || '')
   );
 };
+
+export const openDeviceLocationSettings = () => {
+  if (typeof window === 'undefined') return;
+  const ua = navigator.userAgent || '';
+  const isAndroid = /android/i.test(ua);
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+
+  if (isAndroid) {
+    try {
+      window.location.href = 'intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end';
+    } catch (_) {
+      try {
+        window.location.href = 'intent://settings/location#Intent;scheme=android-app;end';
+      } catch (_) {}
+    }
+  } else if (isIOS) {
+    try {
+      window.location.href = 'app-settings:';
+    } catch (_) {}
+  }
+};
+
