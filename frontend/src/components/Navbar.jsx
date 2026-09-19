@@ -23,17 +23,23 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Title */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-200">
-              <Bus className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center bg-yellow-50 flex-shrink-0">
+              <img
+                src="/bus-logo.jpg"
+                alt="VSB Institutions Bus 09"
+                className="w-full h-full object-cover object-center"
+              />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold text-slate-900 tracking-tight text-lg">SmartBus</span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <span className="font-black text-slate-900 tracking-tight text-lg">
+                  <span className="text-emerald-700">Smart</span>Bus
+                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full font-black bg-yellow-400 text-slate-950 shadow-xs">
                   BUS-09
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block">College Attendance Monitoring System</p>
+              <p className="text-xs text-slate-500 hidden sm:block font-medium">VSB Institutions • Bus Attendance</p>
             </div>
           </div>
 

@@ -57,19 +57,23 @@ export const Login = () => {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
-        {/* Logo Badge in Green and Yellow */}
-        <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 via-green-500 to-yellow-400 flex items-center justify-center text-emerald-950 shadow-xl shadow-yellow-500/25 border-2 border-yellow-300/60 mb-4 transform hover:scale-105 transition">
-          <Bus className="w-9 h-9 text-slate-950" />
+        {/* Real College Bus Logo Badge */}
+        <div className="mx-auto w-24 h-24 rounded-3xl overflow-hidden shadow-2xl shadow-yellow-500/30 border-4 border-yellow-400 mb-4 transform hover:scale-105 transition bg-yellow-100 flex items-center justify-center ring-4 ring-emerald-400/30">
+          <img
+            src="/bus-logo.jpg"
+            alt="VSB Institutions Bus 09"
+            className="w-full h-full object-cover object-center"
+          />
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
           <span className="text-yellow-400">Smart</span>Bus Attendance
         </h2>
         <div className="mt-1 flex items-center justify-center space-x-2">
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-yellow-400 text-slate-950 shadow-sm">
             BUS NO 09
           </span>
-          <span className="text-xs text-emerald-200">
-            55 Registered Students System
+          <span className="text-xs text-emerald-200 font-semibold">
+            VSB Institutions • 55 Students System
           </span>
         </div>
       </div>
