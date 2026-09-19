@@ -74,6 +74,10 @@ export const DriverDashboard = () => {
   const [isAdjustRangeModalOpen, setIsAdjustRangeModalOpen] = useState(false);
 
   const locationWatchRef = useRef(null);
+  const wakeLockRef = useRef(null);
+  const audioRef = useRef(null);
+  const workerRef = useRef(null);
+  const coordsRef = useRef(null);
 
   const fetchActiveTrip = async () => {
     try {
@@ -119,14 +123,14 @@ export const DriverDashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // GPS location streaming for active trip - updates automatically every 1 second
+  // GPS location streaming for active trip - with Mobile Background Running Engine
   useEffect(() => {
     let watchId = null;
     let intervalId = null;
     let isBroadcasting = false;
 
     if (activeTrip) {
-      setLocationStatus('Broadcasting Live GPS (1s)...');
+      setLocationStatus('Broadcasting Live GPS...');
 
       const sendLocationUpdate = async (lat, lon, accuracy) => {
         if (isBroadcasting) return;
@@ -136,13 +140,15 @@ export const DriverDashboard = () => {
             latitude: lat,
             longitude: lon,
           });
-          setCurrentCoords({
+          const update = {
             latitude: lat,
             longitude: lon,
             accuracy: accuracy || null,
             updatedAt: new Date(),
-          });
-          setLocationStatus('Live GPS Broadcasting (1s)');
+          };
+          setCurrentCoords(update);
+          coordsRef.current = update;
+          setLocationStatus('Live & Background GPS Active');
         } catch (e) {
           setLocationStatus('Retrying Live GPS...');
         } finally {
@@ -158,8 +164,102 @@ export const DriverDashboard = () => {
         sendLocationUpdate(lat, lon, accuracy);
       };
 
-      if (navigator.geolocation) {
-        // 1. Continuous high-accuracy watch
+      // 1. Mobile Screen Wake Lock: prevents mobile screen from sleeping during active trips
+      const requestWakeLock = async () => {
+        if ('wakeLock' in navigator && !wakeLockRef.current && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+          try {
+            wakeLockRef.current = await navigator.wakeLock.request('screen');
+            wakeLockRef.current.addEventListener('release', () => {
+              wakeLockRef.current = null;
+            });
+          } catch (err) {
+            console.warn('[WakeLock] Unable to acquire wake lock:', err.message);
+          }
+        }
+      };
+      requestWakeLock();
+
+      // 2. Mobile Silent Audio Keep-Alive: prevents OS from freezing browser process when switching apps
+      try {
+        if (!audioRef.current && typeof Audio !== 'undefined') {
+          const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+          const audio = new Audio(silentWav);
+          audio.loop = true;
+          audio.volume = 0.01;
+          const p = audio.play();
+          if (p && typeof p.catch === 'function') p.catch(() => {});
+          audioRef.current = audio;
+        }
+      } catch (_) {}
+
+      // 3. Inline Web Worker: generates background ticks even when mobile browser tab is hidden
+      try {
+        if (!workerRef.current && typeof Worker !== 'undefined' && typeof Blob !== 'undefined') {
+          const workerScript = `
+            let timer = null;
+            self.onmessage = function(e) {
+              if (e.data === 'start') {
+                if (timer) clearInterval(timer);
+                timer = setInterval(function() {
+                  self.postMessage('tick');
+                }, 4000);
+              } else if (e.data === 'stop') {
+                if (timer) clearInterval(timer);
+                timer = null;
+              }
+            };
+          `;
+          const blob = new Blob([workerScript], { type: 'application/javascript' });
+          const workerUrl = URL.createObjectURL(blob);
+          const worker = new Worker(workerUrl);
+          worker.onmessage = () => {
+            if (navigator?.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => sendLocationUpdateThrottled(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+                () => {},
+                { enableHighAccuracy: true, maximumAge: 15000, timeout: 5000 }
+              );
+            }
+          };
+          worker.postMessage('start');
+          workerRef.current = worker;
+        }
+      } catch (_) {}
+
+      // 4. Visibility change & focus listeners
+      const handleVisibilityChange = () => {
+        if (typeof document === 'undefined') return;
+        if (document.hidden) {
+          // Driver came out from webpage: immediately snapshot location
+          if (navigator?.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => sendLocationUpdateThrottled(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+              () => {},
+              { enableHighAccuracy: true, maximumAge: 15000, timeout: 5000 }
+            );
+          }
+        } else {
+          // Driver returned to webpage: re-acquire wake lock and fetch fresh coordinates
+          requestWakeLock();
+          if (navigator?.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => sendLocationUpdateThrottled(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
+              () => {},
+              { enableHighAccuracy: true, maximumAge: 10000, timeout: 8000 }
+            );
+          }
+        }
+      };
+
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      }
+      if (typeof window !== 'undefined') {
+        window.addEventListener('focus', requestWakeLock);
+      }
+
+      // 5. Geolocation watchPosition
+      if (navigator?.geolocation) {
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude, accuracy } = pos.coords;
@@ -172,7 +272,7 @@ export const DriverDashboard = () => {
           { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
         );
 
-        // 2. Active fallback timer ensures fresh coordinates even when stationary or watch throttles
+        // Periodic fallback timer
         intervalId = setInterval(() => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
@@ -184,18 +284,43 @@ export const DriverDashboard = () => {
             },
             { enableHighAccuracy: true, maximumAge: 15000, timeout: 8000 }
           );
-        }, 10000);
+        }, 8000);
       }
     } else {
       setLocationStatus('Inactive');
     }
 
     return () => {
-      if (watchId !== null && navigator.geolocation) {
+      if (watchId !== null && navigator?.geolocation) {
         navigator.geolocation.clearWatch(watchId);
       }
       if (intervalId !== null) {
         clearInterval(intervalId);
+      }
+      if (workerRef.current) {
+        try {
+          workerRef.current.postMessage('stop');
+          workerRef.current.terminate();
+        } catch (_) {}
+        workerRef.current = null;
+      }
+      if (audioRef.current) {
+        try {
+          audioRef.current.pause();
+        } catch (_) {}
+        audioRef.current = null;
+      }
+      if (wakeLockRef.current) {
+        try {
+          wakeLockRef.current.release();
+        } catch (_) {}
+        wakeLockRef.current = null;
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', () => {});
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', () => {});
       }
     };
   }, [activeTrip?.tripId]);
@@ -393,6 +518,28 @@ export const DriverDashboard = () => {
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-700 text-sm flex items-center space-x-2">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <span>{error}</span>
+        </div>
+      )}
+
+      {activeTrip && (
+        <div className="mb-6 p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 border border-emerald-200/90 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs shadow-sm">
+          <div className="flex items-center space-x-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping flex-shrink-0" />
+            <div>
+              <span className="font-extrabold text-emerald-950 flex items-center space-x-1.5">
+                <span>Mobile Background GPS Active</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-200 text-emerald-900 uppercase">
+                  Continuous Tracking
+                </span>
+              </span>
+              <p className="text-[11px] text-emerald-800 mt-0.5">
+                Bus coordinates broadcast continuously even if you switch apps, open Google Maps, or lock your phone screen.
+              </p>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-emerald-700 bg-white/80 px-3 py-1 rounded-xl border border-emerald-200/60 self-start sm:self-auto">
+            {locationStatus}
+          </span>
         </div>
       )}
 

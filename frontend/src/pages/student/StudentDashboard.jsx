@@ -15,17 +15,33 @@ import {
   ArrowRight,
   RefreshCw,
   AlertCircle,
+  AlertTriangle,
   Navigation,
 } from 'lucide-react';
+import { getCurrentPosition, isLocationOffError } from '../../utils/geolocation';
 
 export const StudentDashboard = () => {
-  const { user, student, deviceIdentifier, studentCoords, studentGpsStatus, isTripAuthenticated } = useAuth();
+  const {
+    user,
+    student,
+    deviceIdentifier,
+    studentCoords,
+    studentGpsStatus,
+    isTripAuthenticated,
+    isLocationTurnedOff,
+    setIsLocationTurnedOff,
+  } = useAuth();
   const [activeTrip, setActiveTrip] = useState(null);
   const [markedForActiveTrip, setMarkedForActiveTrip] = useState(false);
   const [activeTripRecord, setActiveTripRecord] = useState(null);
   const [myAttendance, setMyAttendance] = useState({ history: [], stats: {} });
   const [todayRecord, setTodayRecord] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Per-trip GPS location permission & validation states
+  const [isValidatingGps, setIsValidatingGps] = useState(false);
+  const [gpsValidationResult, setGpsValidationResult] = useState(null);
+  const [locationWarning, setLocationWarning] = useState(null);
 
   const fetchStudentData = async () => {
     try {
@@ -69,6 +85,57 @@ export const StudentDashboard = () => {
   }, []);
 
   const isPresentToday = todayRecord && (todayRecord.status === 'PRESENT' || todayRecord.status === 'LATE');
+
+  const validateTripLocation = async () => {
+    setIsValidatingGps(true);
+    setLocationWarning(null);
+    try {
+      const pos = await getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 9000,
+        maximumAge: 5000,
+      });
+      setGpsValidationResult({
+        success: true,
+        coords: pos,
+        message: `Validated (±${pos.accuracy}m accuracy)`,
+      });
+      if (setIsLocationTurnedOff) {
+        setIsLocationTurnedOff(false);
+      }
+      if (activeTrip?._id) {
+        sessionStorage.setItem(`smart_bus_trip_gps_validated_${activeTrip._id}`, 'true');
+      }
+    } catch (err) {
+      console.warn('[Trip GPS Validation Warning]', err);
+      const isOff = isLocationOffError(err);
+      if (isOff && setIsLocationTurnedOff) {
+        setIsLocationTurnedOff(true);
+      }
+      setLocationWarning(
+        isOff
+          ? 'Device Location / GPS is turned OFF. Please turn on Location in your phone settings.'
+          : (err.message || 'Unable to acquire accurate GPS coordinates.')
+      );
+      setGpsValidationResult({
+        success: false,
+        error: err.message,
+      });
+    } finally {
+      setIsValidatingGps(false);
+    }
+  };
+
+  // Prompt location permission and validate GPS on every trip login
+  useEffect(() => {
+    if (activeTrip && isTripAuthenticated) {
+      const tripKey = `smart_bus_trip_gps_validated_${activeTrip._id}`;
+      const alreadyValidated = sessionStorage.getItem(tripKey) === 'true';
+      if (!alreadyValidated && !isValidatingGps) {
+        validateTripLocation();
+      }
+    }
+  }, [activeTrip?._id, isTripAuthenticated]);
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
@@ -125,32 +192,130 @@ export const StudentDashboard = () => {
         </div>
       </div>
 
+      {/* Warning Banner: Location Turned OFF */}
+      {(isLocationTurnedOff || locationWarning) && (
+        <div className="bg-rose-50 border-2 border-rose-500 rounded-3xl p-5 mb-6 shadow-lg shadow-rose-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center space-x-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-7 h-7 text-rose-600" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded-full">
+                  ⚠️ Warning: Location Turned Off
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-rose-950 mt-1">
+                Your Device Location / GPS is Turned OFF
+              </h3>
+              <p className="text-xs text-rose-700 mt-0.5 max-w-xl">
+                {locationWarning || "Your phone's GPS or Location service is turned off. Bus attendance cannot be marked without live GPS verification. Please turn on Location in your device settings."}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={validateTripLocation}
+            disabled={isValidatingGps}
+            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-2xl text-xs flex items-center space-x-2 shadow-md shadow-rose-200 flex-shrink-0 transition cursor-pointer"
+          >
+            <Navigation className="w-4 h-4" />
+            <span>{isValidatingGps ? 'Validating...' : 'Turn On Location & Validate'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Status Banner: Validating Live GPS */}
+      {isValidatingGps && (
+        <div className="bg-indigo-50 border-2 border-indigo-400 rounded-3xl p-5 mb-6 shadow-md shadow-indigo-100 flex items-center justify-between animate-pulse">
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+              <RefreshCw className="w-5 h-5 text-indigo-600 animate-spin" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-indigo-950">
+                Validating Live GPS Location for {activeTrip?.sessionName || 'Active Bus Trip'}...
+              </h4>
+              <p className="text-xs text-indigo-700 mt-0.5">
+                Acquiring high-accuracy satellite coordinates to confirm bus transit geofence.
+              </p>
+            </div>
+          </div>
+          <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-xs font-mono font-bold bg-white text-indigo-600 border border-indigo-200">
+            Validating...
+          </span>
+        </div>
+      )}
+
       {/* Live Continuous GPS & Trip Authentication Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         {/* Live Student GPS Card (Updated Every 1s, Never Locked) */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+        <div className={`p-5 rounded-3xl border shadow-sm flex items-center justify-between ${
+          isLocationTurnedOff || locationWarning
+            ? 'bg-rose-50/60 border-rose-300'
+            : isValidatingGps
+            ? 'bg-indigo-50/60 border-indigo-300'
+            : 'bg-white border-slate-200/80'
+        }`}>
           <div className="flex items-center space-x-3.5 truncate">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-              <Navigation className="w-6 h-6 text-indigo-600 animate-pulse" />
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+              isLocationTurnedOff || locationWarning
+                ? 'bg-rose-100 text-rose-600'
+                : isValidatingGps
+                ? 'bg-indigo-100 text-indigo-600'
+                : 'bg-indigo-50 text-indigo-600'
+            }`}>
+              {isLocationTurnedOff || locationWarning ? (
+                <AlertTriangle className="w-6 h-6 text-rose-600" />
+              ) : isValidatingGps ? (
+                <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
+              ) : (
+                <Navigation className="w-6 h-6 text-indigo-600 animate-pulse" />
+              )}
             </div>
             <div className="truncate">
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">Live Student GPS</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span className={`text-xs font-bold uppercase tracking-wider ${
+                  isLocationTurnedOff || locationWarning ? 'text-rose-700' : 'text-indigo-600'
+                }`}>
+                  Live Student GPS
+                </span>
+                {!(isLocationTurnedOff || locationWarning) && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                )}
               </div>
-              <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
-                {studentGpsStatus || 'Live GPS Active (Updated Every 1s)'}
+              <p className={`text-xs font-bold mt-0.5 truncate ${
+                isLocationTurnedOff || locationWarning ? 'text-rose-900' : 'text-slate-800'
+              }`}>
+                {isLocationTurnedOff || locationWarning
+                  ? '⚠️ Device Location is OFF'
+                  : isValidatingGps
+                  ? 'Validating Live GPS...'
+                  : (studentGpsStatus || 'Live GPS Active (Updated Every 1s)')}
               </p>
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
-                {studentCoords?.latitude
+              <p className={`text-[11px] font-mono mt-0.5 truncate ${
+                isLocationTurnedOff || locationWarning ? 'text-rose-700' : 'text-slate-500'
+              }`}>
+                {isLocationTurnedOff || locationWarning
+                  ? 'Tap button to turn ON location'
+                  : studentCoords?.latitude
                   ? `${studentCoords.latitude.toFixed(5)}, ${studentCoords.longitude.toFixed(5)}${studentCoords.accuracy ? ` (±${Math.round(studentCoords.accuracy)}m)` : ''}`
                   : 'Streaming high-accuracy 1s GPS...'}
               </p>
             </div>
           </div>
-          <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
-            Never Locked
-          </span>
+          {isLocationTurnedOff || locationWarning ? (
+            <button
+              onClick={validateTripLocation}
+              disabled={isValidatingGps}
+              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-600 hover:bg-rose-700 text-white flex-shrink-0 transition shadow-sm"
+            >
+              Validate
+            </button>
+          ) : (
+            <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
+              Never Locked
+            </span>
+          )}
         </div>
 
         {/* Per-Trip Authentication Status */}

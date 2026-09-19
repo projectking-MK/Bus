@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
 import { QRScanner } from '../../components/QRScanner';
-import { getCurrentPosition, isSecureOrigin } from '../../utils/geolocation';
+import { getCurrentPosition, isSecureOrigin, isLocationOffError } from '../../utils/geolocation';
 import {
   QrCode,
   MapPin,
@@ -19,7 +19,15 @@ import {
 } from 'lucide-react';
 
 export const ScanAttendance = () => {
-  const { user, student, deviceIdentifier, studentCoords, isTripAuthenticated } = useAuth();
+  const {
+    user,
+    student,
+    deviceIdentifier,
+    studentCoords,
+    isTripAuthenticated,
+    isLocationTurnedOff,
+    setIsLocationTurnedOff,
+  } = useAuth();
   const navigate = useNavigate();
 
   const [scanning, setScanning] = useState(true);
@@ -29,6 +37,7 @@ export const ScanAttendance = () => {
   const [requireTripLogin, setRequireTripLogin] = useState(false);
 
   // Proactive Location Permission state
+  const [isLocationOff, setIsLocationOff] = useState(isLocationTurnedOff || false);
   const [locationStatus, setLocationStatus] = useState('acquiring');
   const [cachedPosition, setCachedPosition] = useState(() => {
     try {
@@ -91,6 +100,12 @@ export const ScanAttendance = () => {
         },
         (err) => {
           console.warn('[Student GPS Watch Warning]', err.message);
+          if (isLocationOffError(err)) {
+            setIsLocationOff(true);
+            if (setIsLocationTurnedOff) setIsLocationTurnedOff(true);
+            setLocationStatus('location_off');
+            setLocationMessage('Device Location / GPS is turned OFF. Please turn on Location in your phone settings.');
+          }
         },
         { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
       );
@@ -117,12 +132,21 @@ export const ScanAttendance = () => {
       const pos = await getCurrentPosition({ timeout: 10000, maximumAge: 60000, enableHighAccuracy: true });
       setCachedPosition(pos);
       setLocationStatus('ready');
+      setIsLocationOff(false);
+      if (setIsLocationTurnedOff) setIsLocationTurnedOff(false);
       setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
       setErrorDetails(null);
     } catch (err) {
       console.warn('[Request Location Error]', err);
-      setLocationStatus('denied');
-      setLocationMessage(err.message || 'Unable to acquire location.');
+      const isOff = isLocationOffError(err);
+      setIsLocationOff(isOff);
+      if (isOff && setIsLocationTurnedOff) setIsLocationTurnedOff(true);
+      setLocationStatus(isOff ? 'location_off' : 'denied');
+      setLocationMessage(
+        isOff
+          ? 'Device Location / GPS is turned OFF. Please turn on Location in your phone settings.'
+          : (err.message || 'Unable to acquire location.')
+      );
     }
   };
 
@@ -174,12 +198,20 @@ export const ScanAttendance = () => {
           if (position?.latitude) {
             console.warn('[ScanAttendance] Using cached transit GPS fix:', gpsError.message);
           } else {
+            const isOff = isLocationOffError(gpsError);
+            if (isOff) {
+              setIsLocationOff(true);
+              if (setIsLocationTurnedOff) setIsLocationTurnedOff(true);
+            }
+            const errText = isOff
+              ? 'Device Location / GPS is turned OFF. Please turn on Location in your phone settings.'
+              : gpsError.message;
             setChecks((prev) => ({
               ...prev,
-              gps: { status: 'error', label: gpsError.message },
+              gps: { status: 'error', label: errText },
             }));
-            setLocationStatus('denied');
-            setErrorDetails(gpsError.message);
+            setLocationStatus(isOff ? 'location_off' : 'denied');
+            setErrorDetails(errText);
             setSubmitting(false);
             return;
           }
@@ -326,7 +358,25 @@ export const ScanAttendance = () => {
       ) : (
         <>
           {/* Proactive Location Permission Banner */}
-          {locationStatus === 'insecure' ? (
+          {(isLocationOff || isLocationTurnedOff || locationStatus === 'location_off') ? (
+            <div className="mb-4 p-4 bg-rose-50 border-2 border-rose-500 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-rose-900 shadow-md">
+              <div className="flex items-start space-x-2.5">
+                <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-rose-950 text-sm">⚠️ Warning: Device Location is Turned OFF</p>
+                  <p className="text-rose-700 mt-0.5 leading-relaxed">
+                    Your phone's GPS / Location service is turned off. Attendance cannot be verified without location. Please turn on Location in your phone settings.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={requestLocation}
+                className="self-stretch sm:self-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm cursor-pointer whitespace-nowrap"
+              >
+                Turn On Location & Validate
+              </button>
+            </div>
+          ) : locationStatus === 'insecure' ? (
             <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-sm">
               <div className="flex items-center space-x-2.5">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />

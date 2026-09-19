@@ -8,7 +8,7 @@ const generateToken = (id, role, email, authenticatedTripId = null) => {
   return jwt.sign(
     { id, role, email, authenticatedTripId },
     process.env.JWT_SECRET || 'default_fallback_secret',
-    { expiresIn: '7d' }
+    { expiresIn: role === 'DRIVER' ? '365d' : '7d' }
   );
 };
 

@@ -73,14 +73,17 @@ export const getCurrentPosition = (options = {}) => {
 
             let msg = 'Failed to obtain GPS location.';
             const code = fallbackErr?.code || error?.code;
+            let isOff = false;
             switch (code) {
               case 1: // PERMISSION_DENIED
+                isOff = true;
                 msg = !isSecureOrigin()
                   ? 'Location permission is blocked on HTTP. Please switch to HTTPS.'
                   : 'Location permission was denied. Please allow location access in browser settings.';
                 break;
               case 2: // POSITION_UNAVAILABLE
-                msg = 'Location information is currently unavailable. Please turn on device GPS.';
+                isOff = true;
+                msg = 'Device Location / GPS is turned OFF. Please turn on Location in your phone settings.';
                 break;
               case 3: // TIMEOUT
                 if (savedGps && savedGps.latitude) {
@@ -91,7 +94,10 @@ export const getCurrentPosition = (options = {}) => {
               default:
                 msg = fallbackErr?.message || error?.message || msg;
             }
-            reject(new Error(msg));
+            const errObj = new Error(msg);
+            errObj.code = code;
+            errObj.isLocationOff = isOff;
+            reject(errObj);
           },
           { enableHighAccuracy: false, timeout: 6000, maximumAge: 180000 }
         );
@@ -99,4 +105,14 @@ export const getCurrentPosition = (options = {}) => {
       defaultOptions
     );
   });
+};
+
+export const isLocationOffError = (error) => {
+  if (!error) return false;
+  return (
+    error.isLocationOff === true ||
+    error.code === 1 ||
+    error.code === 2 ||
+    /location.*(off|disabled|unavailable|denied|turned off)/i.test(error.message || '')
+  );
 };

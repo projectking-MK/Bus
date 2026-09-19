@@ -18,6 +18,13 @@ import { ScanAttendance } from './pages/student/ScanAttendance';
 // Root redirector based on authenticated user's role
 const RootRedirect = () => {
   const { user, loading } = useAuth();
+  const token = localStorage.getItem('smart_bus_auth_token');
+  const isDriverSession = localStorage.getItem('smart_bus_driver_session') === 'true';
+
+  // Fast path for driver: never bounce to login, continue directly on driver page
+  if (token && (isDriverSession || user?.role === 'DRIVER')) {
+    return <Navigate to="/driver/dashboard" replace />;
+  }
 
   if (loading) {
     return (

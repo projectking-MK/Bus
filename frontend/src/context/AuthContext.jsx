@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [studentGpsStatus, setStudentGpsStatus] = useState('Standby');
   const [isTripAuthenticated, setIsTripAuthenticated] = useState(true);
   const [currentTrip, setCurrentTrip] = useState(null);
+  const [isLocationTurnedOff, setIsLocationTurnedOff] = useState(false);
 
   // Initialize and check current auth session
   useEffect(() => {
@@ -26,6 +27,15 @@ export const AuthProvider = ({ children }) => {
             setStudent(res.data.student);
             setIsTripAuthenticated(res.data.isTripAuthenticated ?? true);
             setCurrentTrip(res.data.activeTrip || null);
+
+            // Maintain persistent driver session
+            if (res.data.user.role === 'DRIVER') {
+              localStorage.setItem('smart_bus_driver_session', 'true');
+              localStorage.setItem('smart_bus_user_role', 'DRIVER');
+            } else {
+              localStorage.removeItem('smart_bus_driver_session');
+              localStorage.setItem('smart_bus_user_role', res.data.user.role);
+            }
 
             // If student, verify device auto-registration
             if (res.data.user.role === 'STUDENT') {
@@ -67,7 +77,8 @@ export const AuthProvider = ({ children }) => {
             accuracy: accuracy || null,
             updatedAt: new Date(),
           });
-          setStudentGpsStatus('Live GPS Active (Updated Every 1s)');
+          setStudentGpsStatus('Live GPS Active');
+          setIsLocationTurnedOff(false);
         } catch (err) {
           console.warn('[Student GPS Stream Error]', err.response?.data?.message || err.message);
           setStudentGpsStatus('Retrying Live GPS...');
@@ -77,32 +88,40 @@ export const AuthProvider = ({ children }) => {
       };
 
       if (typeof window !== 'undefined' && navigator && navigator.geolocation) {
-        // 1. Continuous high-accuracy watchPosition with maximumAge: 0
+        // Continuous watchPosition with reasonable maximumAge so mobile devices stream smoothly
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
             const { latitude, longitude, accuracy } = pos.coords;
             sendLocationUpdate(latitude, longitude, accuracy);
+            setIsLocationTurnedOff(false);
           },
           (err) => {
             console.warn('[Student GPS Watch Warning]', err.message);
+            if (err.code === 1 || err.code === 2) {
+              setIsLocationTurnedOff(true);
+            }
             setStudentGpsStatus('GPS Warning (Check permissions)');
           },
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+          { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
         );
 
-        // 2. Active 1-second interval timer ensures sub-second freshness even if watchPosition throttles
+        // Fallback interval every 10s
         intervalId = setInterval(() => {
           navigator.geolocation.getCurrentPosition(
             (pos) => {
               const { latitude, longitude, accuracy } = pos.coords;
               sendLocationUpdate(latitude, longitude, accuracy);
+              setIsLocationTurnedOff(false);
             },
             (err) => {
+              if (err.code === 1 || err.code === 2) {
+                setIsLocationTurnedOff(true);
+              }
               console.warn('[Student GPS Interval Warning]', err.message);
             },
-            { enableHighAccuracy: true, maximumAge: 0, timeout: 2500 }
+            { enableHighAccuracy: true, maximumAge: 20000, timeout: 8000 }
           );
-        }, 1000);
+        }, 10000);
       }
     } else {
       setStudentGpsStatus('Inactive');
@@ -147,6 +166,15 @@ export const AuthProvider = ({ children }) => {
       setCurrentTrip(tripData || null);
       setIsTripAuthenticated(true);
 
+      // Persistent driver session
+      if (newUser.role === 'DRIVER') {
+        localStorage.setItem('smart_bus_driver_session', 'true');
+        localStorage.setItem('smart_bus_user_role', 'DRIVER');
+      } else {
+        localStorage.removeItem('smart_bus_driver_session');
+        localStorage.setItem('smart_bus_user_role', newUser.role);
+      }
+
       if (newUser.role === 'STUDENT') {
         await checkAndRegisterDevice(newStudent);
       }
@@ -158,6 +186,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('smart_bus_auth_token');
+    localStorage.removeItem('smart_bus_driver_session');
+    localStorage.removeItem('smart_bus_user_role');
     setToken(null);
     setUser(null);
     setStudent(null);
@@ -165,6 +195,7 @@ export const AuthProvider = ({ children }) => {
     setStudentGpsStatus('Inactive');
     setIsTripAuthenticated(true);
     setCurrentTrip(null);
+    setIsLocationTurnedOff(false);
   };
 
   const refreshProfile = async () => {
@@ -175,6 +206,10 @@ export const AuthProvider = ({ children }) => {
         setStudent(res.data.student);
         setIsTripAuthenticated(res.data.isTripAuthenticated ?? true);
         setCurrentTrip(res.data.activeTrip || null);
+        if (res.data.user.role === 'DRIVER') {
+          localStorage.setItem('smart_bus_driver_session', 'true');
+          localStorage.setItem('smart_bus_user_role', 'DRIVER');
+        }
       }
     } catch (e) {
       console.error('[Refresh Profile Error]', e);
@@ -197,6 +232,8 @@ export const AuthProvider = ({ children }) => {
         studentGpsStatus,
         isTripAuthenticated,
         currentTrip,
+        isLocationTurnedOff,
+        setIsLocationTurnedOff,
       }}
     >
       {children}

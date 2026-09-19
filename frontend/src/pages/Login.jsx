@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Bus, Lock, Mail, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
@@ -10,8 +10,22 @@ export const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
+
+  // If driver logged in once, always continue from the driver page, never stay on login page
+  const token = localStorage.getItem('smart_bus_auth_token');
+  const isDriverSession = localStorage.getItem('smart_bus_driver_session') === 'true';
+
+  if (token && (isDriverSession || user?.role === 'DRIVER')) {
+    return <Navigate to="/driver/dashboard" replace />;
+  }
+
+  useEffect(() => {
+    if (token && (isDriverSession || user?.role === 'DRIVER')) {
+      navigate('/driver/dashboard', { replace: true });
+    }
+  }, [user, navigate, token, isDriverSession]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
