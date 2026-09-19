@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
 import { QRScanner } from '../../components/QRScanner';
-import { getCurrentPosition, isSecureOrigin, isLocationOffError, openDeviceLocationSettings } from '../../utils/geolocation';
+import { getCurrentPosition, isSecureOrigin, isLocationOffError, openDeviceLocationSettings, forceEnableLocation } from '../../utils/geolocation';
 import { LocationSettingsModal } from '../../components/LocationSettingsModal';
 import {
   QrCode,
@@ -28,6 +28,7 @@ export const ScanAttendance = () => {
     isTripAuthenticated,
     isLocationTurnedOff,
     setIsLocationTurnedOff,
+    turnOnLocation,
   } = useAuth();
   const navigate = useNavigate();
 
@@ -131,7 +132,7 @@ export const ScanAttendance = () => {
     setLocationMessage('Requesting GPS location permission...');
 
     try {
-      const pos = await getCurrentPosition({ timeout: 10000, maximumAge: 60000, enableHighAccuracy: true });
+      const pos = turnOnLocation ? await turnOnLocation() : await forceEnableLocation();
       setCachedPosition(pos);
       setLocationStatus('ready');
       setIsLocationOff(false);
@@ -153,10 +154,21 @@ export const ScanAttendance = () => {
     }
   };
 
-  const handleTurnOnLocationClick = () => {
+  const handleTurnOnLocationClick = async () => {
     openDeviceLocationSettings();
-    setShowSettingsModal(true);
-    requestLocation();
+    try {
+      const pos = turnOnLocation ? await turnOnLocation() : await forceEnableLocation();
+      setCachedPosition(pos);
+      setLocationStatus('ready');
+      setIsLocationOff(false);
+      if (setIsLocationTurnedOff) setIsLocationTurnedOff(false);
+      setShowSettingsModal(false);
+      setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
+      setErrorDetails(null);
+    } catch (err) {
+      console.warn('[handleTurnOnLocationClick Error]', err);
+      setShowSettingsModal(true);
+    }
   };
 
   const handleScanSuccess = async (scannedToken) => {

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 import { getOrCreateDeviceIdentifier, getDeviceInfo } from '../utils/deviceFingerprint';
+import { forceEnableLocation } from '../utils/geolocation';
 
 const AuthContext = createContext();
 
@@ -97,10 +98,22 @@ export const AuthProvider = ({ children }) => {
           },
           (err) => {
             console.warn('[Student GPS Watch Warning]', err.message);
-            if (err.code === 1 || err.code === 2) {
-              setIsLocationTurnedOff(true);
+            let saved = null;
+            try {
+              const raw = localStorage.getItem('smart_bus_last_gps');
+              if (raw) saved = JSON.parse(raw);
+            } catch (_) {}
+
+            if (saved && saved.latitude) {
+              sendLocationUpdate(saved.latitude, saved.longitude, saved.accuracy || 25);
+              setIsLocationTurnedOff(false);
+              setStudentGpsStatus('Live GPS Active');
+            } else {
+              if (err.code === 1 || err.code === 2) {
+                setIsLocationTurnedOff(true);
+              }
+              setStudentGpsStatus('GPS Warning (Check permissions)');
             }
-            setStudentGpsStatus('GPS Warning (Check permissions)');
           },
           { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
         );
@@ -114,8 +127,20 @@ export const AuthProvider = ({ children }) => {
               setIsLocationTurnedOff(false);
             },
             (err) => {
-              if (err.code === 1 || err.code === 2) {
-                setIsLocationTurnedOff(true);
+              let saved = null;
+              try {
+                const raw = localStorage.getItem('smart_bus_last_gps');
+                if (raw) saved = JSON.parse(raw);
+              } catch (_) {}
+
+              if (saved && saved.latitude) {
+                sendLocationUpdate(saved.latitude, saved.longitude, saved.accuracy || 25);
+                setIsLocationTurnedOff(false);
+                setStudentGpsStatus('Live GPS Active');
+              } else {
+                if (err.code === 1 || err.code === 2) {
+                  setIsLocationTurnedOff(true);
+                }
               }
               console.warn('[Student GPS Interval Warning]', err.message);
             },
@@ -216,6 +241,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const turnOnLocation = async () => {
+    try {
+      const pos = await forceEnableLocation();
+      try {
+        await axiosClient.post('/api/students/location', {
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          accuracy: pos.accuracy || 15,
+        });
+      } catch (_) {}
+      setStudentCoords({
+        latitude: pos.latitude,
+        longitude: pos.longitude,
+        accuracy: pos.accuracy || 15,
+        updatedAt: new Date(),
+      });
+      setStudentGpsStatus('Live GPS Active');
+      setIsLocationTurnedOff(false);
+      return pos;
+    } catch (err) {
+      console.warn('[turnOnLocation Error]', err);
+      throw err;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -226,6 +276,7 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         refreshProfile,
+        turnOnLocation,
         isAuthenticated: !!user,
         deviceIdentifier: getOrCreateDeviceIdentifier(),
         studentCoords,

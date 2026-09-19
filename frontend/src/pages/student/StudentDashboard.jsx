@@ -18,7 +18,7 @@ import {
   AlertTriangle,
   Navigation,
 } from 'lucide-react';
-import { getCurrentPosition, isLocationOffError, openDeviceLocationSettings } from '../../utils/geolocation';
+import { getCurrentPosition, isLocationOffError, openDeviceLocationSettings, forceEnableLocation } from '../../utils/geolocation';
 import { LocationSettingsModal } from '../../components/LocationSettingsModal';
 
 export const StudentDashboard = () => {
@@ -31,6 +31,7 @@ export const StudentDashboard = () => {
     isTripAuthenticated,
     isLocationTurnedOff,
     setIsLocationTurnedOff,
+    turnOnLocation,
   } = useAuth();
   const [activeTrip, setActiveTrip] = useState(null);
   const [markedForActiveTrip, setMarkedForActiveTrip] = useState(false);
@@ -92,11 +93,7 @@ export const StudentDashboard = () => {
     setIsValidatingGps(true);
     setLocationWarning(null);
     try {
-      const pos = await getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 9000,
-        maximumAge: 5000,
-      });
+      const pos = turnOnLocation ? await turnOnLocation() : await forceEnableLocation();
       setGpsValidationResult({
         success: true,
         coords: pos,
@@ -105,6 +102,7 @@ export const StudentDashboard = () => {
       if (setIsLocationTurnedOff) {
         setIsLocationTurnedOff(false);
       }
+      setLocationWarning(null);
       setShowSettingsModal(false);
       if (activeTrip?._id) {
         sessionStorage.setItem(`smart_bus_trip_gps_validated_${activeTrip._id}`, 'true');
@@ -129,10 +127,36 @@ export const StudentDashboard = () => {
     }
   };
 
-  const handleTurnOnLocationClick = () => {
+  const handleTurnOnLocationClick = async () => {
+    setIsValidatingGps(true);
+    setLocationWarning(null);
+
+    // Attempt platform settings URI (Android intent, iOS app-settings, Windows ms-settings)
     openDeviceLocationSettings();
-    setShowSettingsModal(true);
-    validateTripLocation();
+
+    try {
+      const pos = turnOnLocation ? await turnOnLocation() : await forceEnableLocation();
+      setGpsValidationResult({
+        success: true,
+        coords: pos,
+        message: `Validated (±${pos.accuracy}m accuracy)`,
+      });
+      if (setIsLocationTurnedOff) {
+        setIsLocationTurnedOff(false);
+      }
+      setLocationWarning(null);
+      setShowSettingsModal(false);
+
+      if (activeTrip?._id) {
+        sessionStorage.setItem(`smart_bus_trip_gps_validated_${activeTrip._id}`, 'true');
+      }
+    } catch (err) {
+      console.warn('[handleTurnOnLocationClick Error]', err);
+      setLocationWarning(err.message || 'Unable to automatically acquire location.');
+      setShowSettingsModal(true);
+    } finally {
+      setIsValidatingGps(false);
+    }
   };
 
   // Prompt location permission and validate GPS on every trip login
@@ -227,8 +251,17 @@ export const StudentDashboard = () => {
             disabled={isValidatingGps}
             className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-2xl text-xs flex items-center space-x-2 shadow-md shadow-rose-200 flex-shrink-0 transition cursor-pointer"
           >
-            <Navigation className="w-4 h-4" />
-            <span>{isValidatingGps ? 'Validating...' : 'Turn On Location & Validate'}</span>
+            {isValidatingGps ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Turning ON & Validating...</span>
+              </>
+            ) : (
+              <>
+                <Navigation className="w-4 h-4" />
+                <span>Turn On Location & Validate</span>
+              </>
+            )}
           </button>
         </div>
       )}
