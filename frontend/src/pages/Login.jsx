@@ -183,7 +183,7 @@ export const Login = () => {
           <p className="text-sm sm:text-base font-black text-yellow-300 tracking-wide mt-0.5">
             Kowshiek R
           </p>
-          <p className="text-xs text-emerald-200/80 font-semibold mt-0.5">
+          <p className="text-sm sm:text-base text-yellow-400 font-bold mt-0.5">
             Department of IT
           </p>
         </div>

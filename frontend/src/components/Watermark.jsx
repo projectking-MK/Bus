@@ -39,8 +39,8 @@ export const Watermark = () => {
             Kowshiek R
           </p>
           <p
-            className={`text-[9px] sm:text-[10px] font-semibold ${
-              isLoginPage ? 'text-emerald-300/85' : 'text-slate-500'
+            className={`text-xs sm:text-sm font-bold tracking-tight ${
+              isLoginPage ? 'text-yellow-300/90' : 'text-slate-700'
             }`}
           >
             Department of IT

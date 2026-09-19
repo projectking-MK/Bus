@@ -138,7 +138,7 @@ const AppContent = () => {
             <p className="text-sm sm:text-base font-black text-slate-800 tracking-wide">
               Kowshiek R
             </p>
-            <p className="text-xs text-slate-500 font-semibold">
+            <p className="text-sm sm:text-base text-slate-700 font-bold">
               Department of IT
             </p>
           </div>
