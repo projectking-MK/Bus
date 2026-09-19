@@ -29,6 +29,7 @@ export const ScanAttendance = () => {
   const [requireTripLogin, setRequireTripLogin] = useState(false);
 
   // Proactive Location Permission state
+  const [locationStatus, setLocationStatus] = useState('acquiring');
   const [cachedPosition, setCachedPosition] = useState(() => {
     try {
       const raw = localStorage.getItem('smart_bus_last_gps');
