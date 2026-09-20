@@ -164,6 +164,10 @@ export const AuthProvider = ({ children }) => {
 
   const checkAndRegisterDevice = async (studentDoc) => {
     const currentDeviceId = getOrCreateDeviceIdentifier();
+    // Fast path: if already registered with this exact device, skip network roundtrip
+    if (studentDoc && studentDoc.deviceRegistrationStatus && studentDoc.deviceId === currentDeviceId) {
+      return;
+    }
     try {
       const devInfo = getDeviceInfo();
       const res = await axiosClient.post('/api/devices/register', devInfo);
@@ -200,8 +204,9 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('smart_bus_user_role', newUser.role);
       }
 
+      // Fast non-blocking device check so login navigates instantly
       if (newUser.role === 'STUDENT') {
-        await checkAndRegisterDevice(newStudent);
+        checkAndRegisterDevice(newStudent);
       }
 
       return { success: true, user: newUser, activeTrip: tripData };

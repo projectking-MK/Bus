@@ -27,30 +27,30 @@ export const login = async (req, res) => {
     const escapedIdentifier = identifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const isAnand = identifier.toLowerCase() === 'anand';
 
-    // 1. Check direct match on email, username, or name (case-insensitive), or role DRIVER if identifier is 'anand'
-    let candidateUsers = await User.find({
-      $or: [
-        { email: identifier.toLowerCase() },
-        { username: new RegExp(`^${escapedIdentifier}$`, 'i') },
-        { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
-        ...(isAnand ? [{ role: 'DRIVER' }] : []),
-      ],
-    });
-
-    // 2. If not found, check Student collection by rollNumber, studentId, or student name
-    if (candidateUsers.length === 0) {
-      const students = await Student.find({
+    // 1. Parallelize direct user lookup and student lookup to eliminate sequential DB roundtrips
+    const [directUsers, matchedStudents] = await Promise.all([
+      User.find({
+        $or: [
+          { email: identifier.toLowerCase() },
+          { username: new RegExp(`^${escapedIdentifier}$`, 'i') },
+          { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
+          ...(isAnand ? [{ role: 'DRIVER' }] : []),
+        ],
+      }),
+      Student.find({
         $or: [
           { rollNumber: identifier.toUpperCase() },
           { studentId: identifier.toUpperCase() },
           { name: new RegExp(`^${escapedIdentifier}$`, 'i') },
         ],
+      }).select('userId').lean(),
+    ]);
+
+    let candidateUsers = directUsers;
+    if (candidateUsers.length === 0 && matchedStudents.length > 0) {
+      candidateUsers = await User.find({
+        _id: { $in: matchedStudents.map((s) => s.userId) },
       });
-      if (students.length > 0) {
-        candidateUsers = await User.find({
-          _id: { $in: students.map((s) => s.userId) },
-        });
-      }
     }
 
     if (candidateUsers.length === 0) {
@@ -84,18 +84,18 @@ export const login = async (req, res) => {
       });
     }
 
-    // Ensure admin and driver names are updated
+    // Ensure admin and driver names are updated asynchronously if needed
     if (user.role === 'ADMIN' && user.name !== 'R. Kowshiek IT') {
       user.name = 'R. Kowshiek IT';
-      await User.findByIdAndUpdate(user._id, { name: 'R. Kowshiek IT' });
+      User.updateOne({ _id: user._id }, { name: 'R. Kowshiek IT' }).catch(() => {});
     }
     if (user.role === 'DRIVER' && user.name !== 'Anand') {
       user.name = 'Anand';
-      await User.findByIdAndUpdate(user._id, { name: 'Anand' });
+      User.updateOne({ _id: user._id }, { name: 'Anand' }).catch(() => {});
     }
 
     // Bind student login to current active bus trip if one is running
-    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' });
+    const activeTrip = await BusTrip.findOne({ status: 'ACTIVE' }).select('_id sessionName').lean();
     const authenticatedTripId = (user.role === 'STUDENT' && activeTrip) ? activeTrip._id.toString() : null;
 
     const token = generateToken(user._id, user.role, user.email, authenticatedTripId);
@@ -113,8 +113,8 @@ export const login = async (req, res) => {
       }
     }
 
-    // Log successful login
-    await AuditLog.create({
+    // Non-blocking AuditLog recording so HTTP response is sent instantly
+    AuditLog.create({
       action: 'USER_LOGIN',
       performedBy: user._id,
       targetStudentId: studentData ? studentData._id : null,
@@ -122,7 +122,7 @@ export const login = async (req, res) => {
       ipAddress: req.ip || '',
       userAgent: req.headers['user-agent'] || '',
       status: 'SUCCESS',
-    });
+    }).catch((err) => console.warn('[Login Audit Notice]', err.message));
 
     res.json({
       success: true,
