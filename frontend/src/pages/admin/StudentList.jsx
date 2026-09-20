@@ -91,6 +91,7 @@ export const StudentList = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [updatingCreds, setUpdatingCreds] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -203,6 +204,34 @@ export const StudentList = () => {
         type: 'error',
         text: err.response?.data?.message || 'Failed to clear attendance percentages.',
       });
+    }
+  };
+
+  const handleDeleteStudent = async (student) => {
+    if (!student) return;
+    const confirmMessage = `Are you sure you want to permanently delete student ${student.name} (${student.rollNumber})?\n\nThis will completely remove:\n• Student profile\n• User login account (${student.userId?.username || student.name})\n• Registered device bindings\n• All historical attendance logs for this student\n\nThis action cannot be undone.`;
+
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setDeletingId(student._id);
+      const res = await axiosClient.delete(`/api/students/${student._id}`);
+      if (res.data.success) {
+        setNotification({
+          type: 'success',
+          text: res.data.message || `Student ${student.name} (${student.rollNumber}) permanently deleted from database.`,
+        });
+        setStudents((prev) => prev.filter((s) => s._id !== student._id));
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to delete student from database.',
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -740,10 +769,22 @@ export const StudentList = () => {
                         )}
                         <button
                           onClick={() => openEdit(s)}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
                           title="Edit Student Details"
                         >
                           <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(s)}
+                          disabled={deletingId === s._id}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition disabled:opacity-50 cursor-pointer"
+                          title={`Permanently delete ${s.name} (${s.rollNumber})`}
+                        >
+                          {deletingId === s._id ? (
+                            <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
                         </button>
                       </div>
                     </td>
@@ -994,20 +1035,39 @@ export const StudentList = () => {
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 shadow-sm"
-                >
-                  {editingStudent ? 'Save Changes' : 'Create Student'}
-                </button>
+              <div className="pt-2 flex items-center justify-between">
+                {editingStudent ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const st = editingStudent;
+                      setIsAddModalOpen(false);
+                      handleDeleteStudent(st);
+                    }}
+                    className="px-3.5 py-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-xl text-sm font-semibold transition flex items-center space-x-1.5 cursor-pointer"
+                    title={`Delete ${editingStudent.name}`}
+                  >
+                    <Trash2 className="w-4 h-4 text-rose-600" />
+                    <span>Delete Student</span>
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-medium hover:bg-indigo-700 shadow-sm cursor-pointer"
+                  >
+                    {editingStudent ? 'Save Changes' : 'Create Student'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

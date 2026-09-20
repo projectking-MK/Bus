@@ -1430,6 +1430,78 @@ test('29. Admin Edit Student Credentials: Admin can update username and password
   assert.equal(duplicateRes.body.success, false);
 });
 
+test('30. Admin Delete Student: Permanently deletes student profile, user account, devices, and attendance from database', async () => {
+  // 1. Create a dummy student with linked User, Device, and Attendance
+  const delUser = await User.create({
+    name: 'Delete Target Student',
+    username: 'delete_target',
+    email: 'delete_target@college.edu',
+    password: 'TargetPassword123',
+    role: 'STUDENT',
+  });
+
+  const delStudent = await Student.create({
+    userId: delUser._id,
+    studentId: 'STD-DEL001',
+    rollNumber: 'DEL001',
+    name: 'Delete Target Student',
+    email: delUser.email,
+    department: 'CSE',
+    year: '1st Year',
+    gender: 'Male',
+  });
+
+  await Device.create({
+    studentId: delStudent._id,
+    deviceIdentifier: 'DEVICE_UUID_TO_DELETE',
+    status: 'ACTIVE',
+  });
+
+  await Attendance.create({
+    studentId: delStudent._id,
+    tripId: activeTrip._id,
+    deviceId: 'DEVICE_UUID_TO_DELETE',
+    status: 'PRESENT',
+    latitude: 13.0827,
+    longitude: 80.2707,
+    distanceMeters: 5,
+    gpsAccuracy: 10,
+  });
+
+  // 2. Admin calls DELETE /api/students/:id
+  const deleteRes = await makeRequest(
+    'DELETE',
+    `/api/students/${delStudent._id}`,
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+
+  assert.equal(deleteRes.status, 200);
+  assert.equal(deleteRes.body.success, true);
+
+  // 3. Verify all records are deleted from MongoDB collections
+  const checkStudent = await Student.findById(delStudent._id);
+  assert.equal(checkStudent, null, 'Student document must be deleted');
+
+  const checkUser = await User.findById(delUser._id);
+  assert.equal(checkUser, null, 'User auth document must be deleted');
+
+  const checkDevice = await Device.findOne({ studentId: delStudent._id });
+  assert.equal(checkDevice, null, 'Device record must be deleted');
+
+  const checkAttendance = await Attendance.findOne({ studentId: delStudent._id });
+  assert.equal(checkAttendance, null, 'Attendance record must be deleted');
+
+  // 4. Calling delete on non-existent student returns 404
+  const notFoundRes = await makeRequest(
+    'DELETE',
+    `/api/students/${delStudent._id}`,
+    null,
+    { Authorization: `Bearer ${adminToken}` }
+  );
+  assert.equal(notFoundRes.status, 404);
+});
+
 
 
 

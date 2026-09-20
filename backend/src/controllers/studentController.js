@@ -470,7 +470,9 @@ export const updateStudentAttendancePercentage = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const { id } = req.params;
+
+    const student = await Student.findById(id);
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -478,26 +480,61 @@ export const deleteStudent = async (req, res) => {
       });
     }
 
-    // Clean up device and user
-    await Device.deleteMany({ studentId: student._id });
-    await User.findByIdAndDelete(student.userId);
-    await Student.findByIdAndDelete(student._id);
+    const studentDbId = student._id;
+    const userId = student.userId;
+    const rollNumber = student.rollNumber;
+    const studentName = student.name;
 
+    // 1. Delete associated Attendance records from database
+    const attendanceResult = await Attendance.deleteMany({ studentId: studentDbId });
+
+    // 2. Delete associated Device records from database
+    const deviceResult = await Device.deleteMany({ studentId: studentDbId });
+
+    // 3. Delete associated User auth record from database
+    let userDeleted = false;
+    if (userId) {
+      await User.findByIdAndDelete(userId);
+      userDeleted = true;
+    } else if (student.email) {
+      await User.deleteOne({ email: student.email.toLowerCase().trim() });
+      userDeleted = true;
+    }
+
+    // 4. Delete the Student profile record from database
+    await Student.findByIdAndDelete(studentDbId);
+
+    // 5. Create audit log
     await AuditLog.create({
       action: 'STUDENT_DELETED',
       performedBy: req.user._id,
-      details: { rollNumber: student.rollNumber, email: student.email },
+      targetStudentId: studentDbId,
+      details: {
+        rollNumber,
+        name: studentName,
+        deletedUserId: userId,
+        attendanceDeletedCount: attendanceResult.deletedCount || 0,
+        devicesDeletedCount: deviceResult.deletedCount || 0,
+        userDeleted,
+      },
       ipAddress: req.ip || '',
+      status: 'SUCCESS',
     });
 
     res.json({
       success: true,
-      message: 'Student and credentials deleted successfully',
+      message: `Student ${studentName} (${rollNumber}) and all associated records (User account, device bindings, attendance logs) have been permanently deleted from the database.`,
+      deletedStudent: {
+        _id: studentDbId,
+        rollNumber,
+        name: studentName,
+      },
     });
   } catch (error) {
+    console.error('[Delete Student Error]', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete student',
+      message: 'Failed to delete student from database',
       error: error.message,
     });
   }
