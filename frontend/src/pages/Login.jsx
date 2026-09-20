@@ -174,18 +174,6 @@ export const Login = () => {
                 'Sign In to Dashboard'
               )}
             </button>
-
-            {/* Quick Contact Button */}
-            <div className="pt-0.5">
-              <button
-                type="button"
-                onClick={() => setShowContactModal(true)}
-                className="w-full flex justify-center items-center py-2.5 px-4 rounded-xl border border-emerald-300/80 bg-emerald-50/80 hover:bg-emerald-100/90 text-emerald-950 text-xs sm:text-sm font-bold transition cursor-pointer space-x-2 shadow-xs active:scale-[0.99]"
-              >
-                <PhoneCall className="w-4 h-4 text-emerald-700" />
-                <span>Contact (Driver & Bus Incharge)</span>
-              </button>
-            </div>
           </form>
         </div>
 
