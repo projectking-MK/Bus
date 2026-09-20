@@ -1275,6 +1275,112 @@ test('27. Device Management: Admin unbinds all devices, clearing Device collecti
   assert.equal(student1AfterRebind.deviceRegistrationStatus, true);
 });
 
+test('28. 55 Concurrent Students: All 55 students log in and mark attendance simultaneously on the same trip', async () => {
+  // 1. Driver starts a trip
+  const tripRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'EVENING',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 3000,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(tripRes.status, 201);
+  const qrToken = tripRes.body.initialQR.token;
+  const activeTripId = tripRes.body.trip._id;
+
+  // 2. Prepare 55 student test accounts
+  const studentList = [];
+  for (let i = 1; i <= 55; i++) {
+    const roll = `23TEST${String(i).padStart(3, '0')}`;
+    const devId = `DEV_SIM_55_${String(i).padStart(3, '0')}`;
+    const email = `test55_${i}@college.edu`;
+
+    let u = await User.findOne({ email });
+    if (!u) {
+      u = await User.create({
+        name: `Concurrent Student ${i}`,
+        email,
+        password: 'StudentPassword123',
+        role: 'STUDENT',
+      });
+    }
+
+    let s = await Student.findOne({ rollNumber: roll });
+    if (!s) {
+      s = await Student.create({
+        userId: u._id,
+        studentId: `STD-${roll}`,
+        rollNumber: roll,
+        name: `Concurrent Student ${i}`,
+        email,
+        department: 'IT',
+        year: '3rd Year',
+        gender: i % 2 === 0 ? 'Female' : 'Male',
+        deviceId: devId,
+        deviceRegistrationStatus: true,
+      });
+      await Device.create({
+        studentId: s._id,
+        deviceIdentifier: devId,
+        status: 'ACTIVE',
+      });
+    } else {
+      await Student.updateOne({ _id: s._id }, { $set: { deviceId: devId, deviceRegistrationStatus: true } });
+      await Device.findOneAndUpdate(
+        { studentId: s._id },
+        { deviceIdentifier: devId, status: 'ACTIVE' },
+        { upsert: true }
+      );
+    }
+
+    studentList.push({ user: u, student: s, roll, devId });
+  }
+
+  // 3. Concurrently log in all 55 students for this trip
+  const loginPromises = studentList.map((st) =>
+    makeRequest('POST', '/api/auth/login', {
+      identifier: st.roll,
+      password: 'StudentPassword123',
+    })
+  );
+  const loginResponses = await Promise.all(loginPromises);
+  const successfulLogins = loginResponses.filter((r) => r.status === 200);
+  assert.equal(successfulLogins.length, 55, 'All 55 students successfully log in concurrently');
+
+  const studentTokens = loginResponses.map((r) => r.body.token);
+
+  // 4. Concurrently submit attendance for all 55 students at the exact same moment
+  const attendancePromises = studentList.map((st, idx) =>
+    makeRequest(
+      'POST',
+      '/api/attendance/mark',
+      {
+        qrToken,
+        deviceIdentifier: st.devId,
+        latitude: 13.0827 + idx * 0.00001, // within 5-10 meters of bus
+        longitude: 80.2707 + idx * 0.00001,
+        gpsAccuracy: 10,
+      },
+      { Authorization: `Bearer ${studentTokens[idx]}` }
+    )
+  );
+
+  const attendanceResponses = await Promise.all(attendancePromises);
+  const successfulAttendance = attendanceResponses.filter((r) => r.status === 201);
+  const failedAttendance = attendanceResponses.filter((r) => r.status !== 201);
+
+  assert.equal(failedAttendance.length, 0, `No failures allowed: ${JSON.stringify(failedAttendance.map((f) => f.body))}`);
+  assert.equal(successfulAttendance.length, 55, 'All 55 students successfully mark attendance concurrently');
+
+  // 5. Verify 55 distinct attendance records in MongoDB
+  const totalMarked = await Attendance.countDocuments({ tripId: activeTripId, status: 'PRESENT' });
+  assert.equal(totalMarked, 55, 'Database must contain exactly 55 PRESENT records for this trip');
+});
+
 
 
 

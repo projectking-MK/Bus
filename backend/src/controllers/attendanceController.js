@@ -277,11 +277,17 @@ export const markAttendance = async (req, res) => {
       },
     });
 
-    // Update active trip's current location with verified student's GPS on the moving bus
-    activeTrip.currentLatitude = sLat;
-    activeTrip.currentLongitude = sLon;
-    activeTrip.lastLocationUpdate = serverTimestamp;
-    await activeTrip.save();
+    // Update active trip's current location with verified student's GPS on the moving bus (atomic update)
+    await BusTrip.updateOne(
+      { _id: activeTrip._id },
+      {
+        $set: {
+          currentLatitude: sLat,
+          currentLongitude: sLon,
+          lastLocationUpdate: serverTimestamp,
+        },
+      }
+    );
 
     // Update registered device's lastUsedAt
     registeredDevice.lastUsedAt = serverTimestamp;

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bus, Lock, Mail, AlertCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Bus, Lock, Mail, AlertCircle, ShieldCheck, Eye, EyeOff, Phone, PhoneCall, X } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -55,6 +56,19 @@ export const Login = () => {
       <div className="absolute -top-28 -left-28 w-96 h-96 bg-yellow-400/15 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-28 -right-28 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      {/* Top Corner Quick Contact Button */}
+      <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
+        <button
+          type="button"
+          onClick={() => setShowContactModal(true)}
+          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black shadow-lg shadow-yellow-500/20 border border-yellow-300 transition active:scale-95 cursor-pointer"
+          title="Contact Driver & Bus Incharge"
+        >
+          <PhoneCall className="w-3.5 h-3.5" />
+          <span>Contact</span>
+        </button>
+      </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
         {/* Real College Bus Logo Badge */}
@@ -160,6 +174,18 @@ export const Login = () => {
                 'Sign In to Dashboard'
               )}
             </button>
+
+            {/* Quick Contact Button */}
+            <div className="pt-0.5">
+              <button
+                type="button"
+                onClick={() => setShowContactModal(true)}
+                className="w-full flex justify-center items-center py-2.5 px-4 rounded-xl border border-emerald-300/80 bg-emerald-50/80 hover:bg-emerald-100/90 text-emerald-950 text-xs sm:text-sm font-bold transition cursor-pointer space-x-2 shadow-xs active:scale-[0.99]"
+              >
+                <PhoneCall className="w-4 h-4 text-emerald-700" />
+                <span>Contact (Driver & Bus Incharge)</span>
+              </button>
+            </div>
           </form>
         </div>
 
@@ -188,6 +214,107 @@ export const Login = () => {
           </p>
         </div>
       </div>
+
+      {/* Contact Modal showing Driver & Bus Incharge numbers */}
+      {showContactModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
+          onClick={() => setShowContactModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl shadow-2xl border-2 border-yellow-400 max-w-sm w-full p-6 relative overflow-hidden text-slate-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top accent gradient bar */}
+            <div className="absolute top-0 inset-x-0 h-2 bg-gradient-to-r from-emerald-600 via-yellow-400 to-emerald-600"></div>
+
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => setShowContactModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center space-x-3 mb-5 mt-1">
+              <div className="w-11 h-11 rounded-2xl bg-yellow-100 border border-yellow-300 flex items-center justify-center text-slate-900 shadow-sm flex-shrink-0">
+                <PhoneCall className="w-5 h-5 text-emerald-800" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 leading-tight">
+                  Bus Emergency Contacts
+                </h3>
+                <p className="text-xs text-slate-500 font-medium">
+                  Bus No. 09 • VSB Institutions
+                </p>
+              </div>
+            </div>
+
+            {/* Contact cards with one-tap dialing */}
+            <div className="space-y-3">
+              {/* Driver Contact */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-emerald-300 transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Driver Number
+                    </p>
+                    <p className="text-lg font-black text-slate-900 font-mono tracking-tight mt-0.5">
+                      9786123098
+                    </p>
+                  </div>
+                  <a
+                    href="tel:9786123098"
+                    className="inline-flex items-center space-x-1 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition active:scale-95"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Bus Incharge Contact */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-yellow-400 transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      Bus Incharge
+                    </p>
+                    <p className="text-lg font-black text-slate-900 font-mono tracking-tight mt-0.5">
+                      9787842578
+                    </p>
+                  </div>
+                  <a
+                    href="tel:9787842578"
+                    className="inline-flex items-center space-x-1 px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-bold shadow-sm transition active:scale-95 border border-yellow-300"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Exact prompt requested text block */}
+            <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200/90 text-xs text-emerald-950 font-mono leading-relaxed text-center">
+              <div><strong>Driver Number:</strong> 9786123098</div>
+              <div><strong>Bus Incharge:</strong> 9787842578</div>
+            </div>
+
+            {/* Dismiss button */}
+            <button
+              type="button"
+              onClick={() => setShowContactModal(false)}
+              className="mt-4 w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
