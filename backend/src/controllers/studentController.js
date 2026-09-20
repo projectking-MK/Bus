@@ -43,7 +43,9 @@ export const getAllStudents = async (req, res) => {
     if (year) query.year = year;
     if (status) query.accountStatus = status;
 
-    const students = await Student.find(query).sort({ rollNumber: 1 });
+    const students = await Student.find(query)
+      .populate('userId', 'username name email role')
+      .sort({ rollNumber: 1 });
     const total = await Student.countDocuments();
 
     res.json({
@@ -176,7 +178,19 @@ export const createStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   try {
-    const { name, phone, department, year, gender, accountStatus, attendancePercentage, totalClasses, attendedClasses } = req.body;
+    const {
+      name,
+      phone,
+      department,
+      year,
+      gender,
+      accountStatus,
+      attendancePercentage,
+      totalClasses,
+      attendedClasses,
+      username,
+      password,
+    } = req.body;
 
     const student = await Student.findById(req.params.id);
     if (!student) {
@@ -204,12 +218,41 @@ export const updateStudent = async (req, res) => {
 
     await student.save();
 
-    // Also update name/phone on User
-    await User.findByIdAndUpdate(student.userId, {
-      name: student.name,
-      phone: student.phone,
-      isActive: student.accountStatus === 'ACTIVE',
-    });
+    // Also update name/phone/credentials on User
+    const user = await User.findById(student.userId);
+    if (user) {
+      user.name = student.name;
+      user.phone = student.phone;
+      user.isActive = student.accountStatus === 'ACTIVE';
+
+      if (username && username.trim()) {
+        const cleanUsername = username.trim();
+        const existing = await User.findOne({
+          username: { $regex: new RegExp(`^${cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+          _id: { $ne: user._id },
+        });
+        if (existing) {
+          return res.status(400).json({
+            success: false,
+            message: `Username "${cleanUsername}" is already taken by another user.`,
+          });
+        }
+        user.username = cleanUsername;
+      }
+
+      if (password && password.trim()) {
+        const cleanPassword = password.trim();
+        if (cleanPassword.length < 4) {
+          return res.status(400).json({
+            success: false,
+            message: 'Password must be at least 4 characters long.',
+          });
+        }
+        user.password = cleanPassword;
+      }
+
+      await user.save();
+    }
 
     await AuditLog.create({
       action: 'STUDENT_UPDATED',
@@ -223,11 +266,124 @@ export const updateStudent = async (req, res) => {
       success: true,
       message: 'Student updated successfully',
       student,
+      user: user
+        ? {
+            _id: user._id,
+            name: user.name,
+            username: user.username,
+            email: user.email,
+          }
+        : undefined,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Failed to update student',
+      error: error.message,
+    });
+  }
+};
+
+export const updateStudentCredentials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, password } = req.body;
+
+    if (!username && !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a new username or new password to update.',
+      });
+    }
+
+    const student = await Student.findById(id);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found',
+      });
+    }
+
+    let user = null;
+    if (student.userId) {
+      user = await User.findById(student.userId);
+    }
+    if (!user && student.email) {
+      user = await User.findOne({ email: student.email.toLowerCase() });
+      if (user) {
+        student.userId = user._id;
+        await student.save();
+      }
+    }
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Associated user account not found for this student',
+      });
+    }
+
+    const auditDetails = {
+      studentId: student._id,
+      rollNumber: student.rollNumber,
+      name: student.name,
+    };
+
+    if (username && username.trim()) {
+      const cleanUsername = username.trim();
+      const existing = await User.findOne({
+        username: { $regex: new RegExp(`^${cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        _id: { $ne: user._id },
+      });
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Username "${cleanUsername}" is already taken by another user.`,
+        });
+      }
+      user.username = cleanUsername;
+      auditDetails.usernameChanged = true;
+      auditDetails.newUsername = cleanUsername;
+    }
+
+    if (password && password.trim()) {
+      const cleanPassword = password.trim();
+      if (cleanPassword.length < 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 4 characters long.',
+        });
+      }
+      user.password = cleanPassword; // Mongoose pre('save') hashes password
+      auditDetails.passwordChanged = true;
+    }
+
+    await user.save();
+
+    await AuditLog.create({
+      action: 'STUDENT_CREDENTIALS_UPDATED',
+      performedBy: req.user._id,
+      targetStudentId: student._id,
+      details: auditDetails,
+      ipAddress: req.ip || '',
+      status: 'SUCCESS',
+    });
+
+    res.json({
+      success: true,
+      message: `Credentials updated successfully for ${student.name}.`,
+      user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+      },
+    });
+  } catch (error) {
+    console.error('[Update Student Credentials Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update student credentials',
       error: error.message,
     });
   }

@@ -130,6 +130,7 @@ export const login = async (req, res) => {
       user: {
         id: user._id,
         name: user.role === 'ADMIN' ? 'R. Kowshiek IT' : user.role === 'DRIVER' ? 'Anand' : user.name,
+        username: user.username,
         email: user.email,
         role: user.role,
         phone: user.phone,
@@ -190,6 +191,7 @@ export const getMe = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        username: user.username,
         email: user.email,
         role: user.role,
         phone: user.phone,

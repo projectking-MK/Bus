@@ -1381,6 +1381,46 @@ test('28. 55 Concurrent Students: All 55 students log in and mark attendance sim
   assert.equal(totalMarked, 55, 'Database must contain exactly 55 PRESENT records for this trip');
 });
 
+test('29. Admin Edit Student Credentials: Admin can update username and password for students, and student can log in with updated credentials', async () => {
+  // 1. Admin updates student3's username to 'vikram_singh_test' and password to 'VikramNewPass2026'
+  const updateRes = await makeRequest(
+    'PUT',
+    `/api/students/${student3._id}/credentials`,
+    {
+      username: 'vikram_singh_test',
+      password: 'VikramNewPass2026',
+    },
+    { Authorization: `Bearer ${adminToken}` }
+  );
+
+  assert.equal(updateRes.status, 200);
+  assert.equal(updateRes.body.success, true);
+  assert.equal(updateRes.body.user.username, 'vikram_singh_test');
+
+  // 2. Student3 logs in with the new username and new password
+  const loginRes = await makeRequest('POST', '/api/auth/login', {
+    identifier: 'vikram_singh_test',
+    password: 'VikramNewPass2026',
+  });
+
+  assert.equal(loginRes.status, 200);
+  assert.equal(loginRes.body.success, true);
+  assert.equal(loginRes.body.user.username, 'vikram_singh_test');
+
+  // 3. Attempting to set username to one that already exists fails with 400
+  const duplicateRes = await makeRequest(
+    'PUT',
+    `/api/students/${student1._id}/credentials`,
+    {
+      username: 'vikram_singh_test',
+    },
+    { Authorization: `Bearer ${adminToken}` }
+  );
+
+  assert.equal(duplicateRes.status, 400);
+  assert.equal(duplicateRes.body.success, false);
+});
+
 
 
 

@@ -4,6 +4,7 @@ import {
   getStudentById,
   createStudent,
   updateStudent,
+  updateStudentCredentials,
   updateStudentAttendancePercentage,
   clearAllAttendancePercentages,
   deleteStudent,
@@ -26,6 +27,8 @@ router.get('/', authorize('ADMIN'), getAllStudents);
 router.post('/', authorize('ADMIN'), createStudent);
 router.get('/:id', getStudentById);
 router.put('/:id', authorize('ADMIN'), updateStudent);
+router.put('/:id/credentials', authorize('ADMIN'), updateStudentCredentials);
+router.patch('/:id/credentials', authorize('ADMIN'), updateStudentCredentials);
 router.patch('/:id/attendance-percentage', authorize('ADMIN'), updateStudentAttendancePercentage);
 router.delete('/:id', authorize('ADMIN'), deleteStudent);
 

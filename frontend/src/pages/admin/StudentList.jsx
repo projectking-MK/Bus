@@ -16,7 +16,12 @@ import {
   UploadCloud,
   FileSpreadsheet,
   Download,
-  Percent
+  Percent,
+  Key,
+  Eye,
+  EyeOff,
+  Sparkles,
+  Lock,
 } from 'lucide-react';
 
 export const StudentList = () => {
@@ -40,6 +45,13 @@ export const StudentList = () => {
   const [updatingPct, setUpdatingPct] = useState(false);
   const [unbindingAll, setUnbindingAll] = useState(false);
 
+  // Credentials Edit Modal state
+  const [credentialsModalStudent, setCredentialsModalStudent] = useState(null);
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showCredPassword, setShowCredPassword] = useState(false);
+  const [updatingCreds, setUpdatingCreds] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     rollNumber: '',
@@ -49,6 +61,8 @@ export const StudentList = () => {
     department: 'Computer Science & Engineering',
     year: '3rd Year',
     attendancePercentage: 0,
+    username: '',
+    password: '',
   });
 
   const fetchStudents = async () => {
@@ -190,8 +204,86 @@ export const StudentList = () => {
       year: s.year,
       accountStatus: s.accountStatus,
       attendancePercentage: s.attendancePercentage ?? 0,
+      username: s.userId?.username || '',
+      password: '',
     });
     setIsAddModalOpen(true);
+  };
+
+  const openCredentialsModal = (s) => {
+    setCredentialsModalStudent(s);
+    setNewUsername(s.userId?.username || '');
+    setNewPassword('');
+    setShowCredPassword(false);
+  };
+
+  const handleGenerateDefaultPassword = () => {
+    if (!credentialsModalStudent) return;
+    let cleanName = (credentialsModalStudent.name || '').trim();
+    if (/^[A-Za-z]\.?\s+/.test(cleanName)) cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
+    cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
+    cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
+    cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
+
+    const dept = (credentialsModalStudent.department || '').trim().toUpperCase();
+    let deptCode = 'CSE';
+    if (dept.includes('INFORMATION') || dept.includes('IT')) deptCode = 'IT';
+    else if (dept.includes('ELECTRONIC') || dept.includes('ECE')) deptCode = 'ECE';
+    else if (dept.includes('MECHANIC') || dept.includes('MECH')) deptCode = 'MECH';
+    else if (dept.includes('COMPUTER') || dept.includes('CSE')) deptCode = 'CSE';
+    else if (dept) deptCode = dept.split(' ')[0];
+
+    setNewPassword(`${cleanName}${deptCode}`);
+    setShowCredPassword(true);
+  };
+
+  const handleUpdateCredentials = async (e) => {
+    if (e) e.preventDefault();
+    if (!credentialsModalStudent) return;
+
+    if (!newUsername.trim() && !newPassword.trim()) {
+      setNotification({ type: 'error', text: 'Please enter a username or password to update.' });
+      return;
+    }
+
+    try {
+      setUpdatingCreds(true);
+      const res = await axiosClient.put(
+        `/api/students/${credentialsModalStudent._id}/credentials`,
+        {
+          username: newUsername.trim() || undefined,
+          password: newPassword.trim() || undefined,
+        }
+      );
+      if (res.data.success) {
+        setNotification({
+          type: 'success',
+          text: res.data.message || `Credentials updated successfully for ${credentialsModalStudent.name}.`,
+        });
+        const updatedUsername = res.data.user?.username || newUsername.trim();
+        setStudents((prev) =>
+          prev.map((s) =>
+            s._id === credentialsModalStudent._id
+              ? {
+                  ...s,
+                  userId: {
+                    ...(s.userId || {}),
+                    username: updatedUsername,
+                  },
+                }
+              : s
+          )
+        );
+        setCredentialsModalStudent(null);
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to update student credentials.',
+      });
+    } finally {
+      setUpdatingCreds(false);
+    }
   };
 
   const openAttendanceModal = (s) => {
@@ -485,7 +577,17 @@ export const StudentList = () => {
                     </td>
                     <td className="py-3.5 px-6">
                       <div className="font-semibold text-slate-900">{s.name}</div>
-                      <div className="text-[11px] text-slate-400">{s.email}</div>
+                      <div className="text-[11px] text-slate-400 flex items-center space-x-1.5 flex-wrap">
+                        <span>{s.email}</span>
+                        {s.userId?.username && (
+                          <span
+                            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200"
+                            title={`Username: ${s.userId.username}`}
+                          >
+                            @{s.userId.username}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3.5 px-6">
                       <span
@@ -553,6 +655,13 @@ export const StudentList = () => {
                     </td>
                     <td className="py-3.5 px-6 text-right">
                       <div className="flex items-center justify-end space-x-1.5">
+                        <button
+                          onClick={() => openCredentialsModal(s)}
+                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition"
+                          title="Change Username & Password"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => openAttendanceModal(s)}
                           className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"
@@ -765,6 +874,33 @@ export const StudentList = () => {
                 </select>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Login Username
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.username || ''}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="e.g. Kowshiek"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    {editingStudent ? 'New Password' : 'Password'}
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.password || ''}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={editingStudent ? 'Leave blank to keep' : 'Min 4 characters'}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Attendance Percentage (%)
@@ -970,6 +1106,156 @@ export const StudentList = () => {
                     </>
                   ) : (
                     <span>Save Percentage</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Credentials (Username & Password) Modal */}
+      {credentialsModalStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                  <Key className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Change Student Credentials
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Update student login username and password
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCredentialsModalStudent(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Student Info Card */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 mb-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">
+                    {credentialsModalStudent.name}
+                  </div>
+                  <div className="text-xs font-mono text-slate-500 mt-0.5">
+                    {credentialsModalStudent.rollNumber} • {credentialsModalStudent.department}
+                  </div>
+                </div>
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    (credentialsModalStudent.gender || 'Male').toLowerCase() === 'female'
+                      ? 'bg-pink-100 text-pink-800 border border-pink-200'
+                      : 'bg-blue-100 text-blue-800 border border-blue-200'
+                  }`}
+                >
+                  {(credentialsModalStudent.gender || 'Male').toLowerCase() === 'female' ? 'Girl' : 'Boy'}
+                </span>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs">
+                <span className="text-slate-500">Current Login Username:</span>
+                <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                  {credentialsModalStudent.userId?.username || credentialsModalStudent.name}
+                </span>
+              </div>
+            </div>
+
+            <form onSubmit={handleUpdateCredentials} className="space-y-4">
+              {/* Username Input */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Login Username
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="e.g. Kowshiek"
+                    className="w-full px-3.5 py-2 border border-slate-200 rounded-xl text-sm font-mono text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Student can use this username or their Roll Number to log in.
+                </p>
+              </div>
+
+              {/* Password Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    New Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGenerateDefaultPassword}
+                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 cursor-pointer"
+                    title="Generate default pattern: <CleanName><Dept>"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Auto-generate Default</span>
+                  </button>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showCredPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (min 4 chars)"
+                    className="w-full pl-3.5 pr-10 py-2 border border-slate-200 rounded-xl text-sm font-mono text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCredPassword(!showCredPassword)}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    {showCredPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank if you only want to change the username.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setCredentialsModalStudent(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingCreds}
+                  className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-sm transition disabled:opacity-50 flex items-center space-x-1.5 cursor-pointer"
+                >
+                  {updatingCreds ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Update Credentials</span>
+                    </>
                   )}
                 </button>
               </div>
