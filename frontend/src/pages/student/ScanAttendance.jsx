@@ -29,6 +29,7 @@ export const ScanAttendance = () => {
     isLocationTurnedOff,
     setIsLocationTurnedOff,
     turnOnLocation,
+    checkAndRegisterDevice,
   } = useAuth();
   const navigate = useNavigate();
 
@@ -37,6 +38,13 @@ export const ScanAttendance = () => {
   const [verificationResult, setVerificationResult] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
   const [requireTripLogin, setRequireTripLogin] = useState(false);
+
+  // Proactively ensure device binding is registered for this student
+  useEffect(() => {
+    if (student && checkAndRegisterDevice) {
+      checkAndRegisterDevice(student).catch(() => {});
+    }
+  }, [student, checkAndRegisterDevice]);
 
   // Proactive Location Permission state
   const [isLocationOff, setIsLocationOff] = useState(isLocationTurnedOff || false);
@@ -306,6 +314,9 @@ export const ScanAttendance = () => {
     setVerificationResult(null);
     setErrorDetails(null);
     setRequireTripLogin(false);
+    if (student && checkAndRegisterDevice) {
+      checkAndRegisterDevice(student).catch(() => {});
+    }
     setChecks({
       device: { status: 'pending', label: 'Registered Hardware Device' },
       trip: { status: 'pending', label: 'Active Bus Trip' },

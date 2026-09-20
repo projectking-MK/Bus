@@ -1502,6 +1502,77 @@ test('30. Admin Delete Student: Permanently deletes student profile, user accoun
   assert.equal(notFoundRes.status, 404);
 });
 
+test('31. First-Time Student Attendance: Automatically binds first-time device on scan when no prior device was registered', async () => {
+  // 1. Create a fresh student without any registered device
+  const freshUser = await User.create({
+    name: 'Pravinaa Test',
+    username: 'pravinaa_test',
+    email: 'pravinaa_test@college.edu',
+    password: 'PravinaaPassword123',
+    role: 'STUDENT',
+  });
+
+  const freshStudent = await Student.create({
+    userId: freshUser._id,
+    studentId: 'STD-23CS039-TEST',
+    rollNumber: '23CS039-TEST',
+    name: 'Pravinaa Test',
+    email: freshUser.email,
+    department: 'CSBS',
+    year: '3rd Year',
+    gender: 'Female',
+    deviceId: null,
+    deviceRegistrationStatus: false,
+    lastLoginTripId: activeTrip._id,
+  });
+
+  // Verify no device exists for this student initially
+  const beforeDev = await Device.findOne({ studentId: freshStudent._id });
+  assert.equal(beforeDev, null);
+
+  // Student logs in for the active trip
+  const loginRes = await makeRequest('POST', '/api/auth/login', {
+    identifier: freshStudent.rollNumber,
+    password: 'PravinaaPassword123',
+  });
+  assert.equal(loginRes.status, 200);
+  const freshToken = loginRes.body.token;
+
+  // Student scans dynamic QR with their phone
+  const qrRes = await makeRequest('GET', '/api/qr/current', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  const currentToken = qrRes.body.token;
+
+  const firstScanRes = await makeRequest(
+    'POST',
+    '/api/attendance/mark',
+    {
+      qrToken: currentToken,
+      deviceIdentifier: 'PRAVINAA_PHONE_HARDWARE_UUID_039',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+    },
+    { Authorization: `Bearer ${freshToken}` }
+  );
+
+  assert.equal(firstScanRes.status, 201);
+  assert.equal(firstScanRes.body.success, true);
+  assert.equal(firstScanRes.body.attendance.status, 'PRESENT');
+
+  // Verify that device was automatically registered in Device collection
+  const boundDev = await Device.findOne({ studentId: freshStudent._id });
+  assert.ok(boundDev);
+  assert.equal(boundDev.deviceIdentifier, 'PRAVINAA_PHONE_HARDWARE_UUID_039');
+
+  // Verify that student profile reflects the bound device
+  const updatedStudent = await Student.findById(freshStudent._id);
+  assert.equal(updatedStudent.deviceRegistrationStatus, true);
+  assert.equal(updatedStudent.deviceId, 'PRAVINAA_PHONE_HARDWARE_UUID_039');
+});
+
+
 
 
 

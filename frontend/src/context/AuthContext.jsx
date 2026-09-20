@@ -282,6 +282,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         refreshProfile,
         turnOnLocation,
+        checkAndRegisterDevice,
         isAuthenticated: !!user,
         deviceIdentifier: getOrCreateDeviceIdentifier(),
         studentCoords,
