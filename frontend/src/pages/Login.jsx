@@ -284,12 +284,42 @@ export const Login = () => {
                   </a>
                 </div>
               </div>
+
+              {/* Admin Contact (Number Protected & Hidden) */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-purple-300 transition">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center space-x-1.5">
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                        Admin
+                      </p>
+                      <span className="text-[10px] px-1.5 py-0.2 bg-purple-100 text-purple-700 font-bold rounded-full">
+                        Protected
+                      </span>
+                    </div>
+                    <p className="text-base font-black text-slate-400 font-mono tracking-widest mt-0.5">
+                      ••••••••••
+                    </p>
+                  </div>
+                  <a
+                    href="tel:9789400940"
+                    className="inline-flex items-center space-x-1 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm transition active:scale-95"
+                    title="Direct Call to Admin"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>Call Admin</span>
+                  </a>
+                </div>
+              </div>
             </div>
 
-            {/* Exact prompt requested text block */}
+            {/* Prompt requested text block */}
             <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200/90 text-xs text-emerald-950 font-mono leading-relaxed text-center">
               <div><strong>Driver Number:</strong> 9786123098</div>
               <div><strong>Bus Incharge:</strong> 9787842578</div>
+              <div className="text-purple-900 font-semibold mt-0.5">
+                <strong>Admin:</strong> •••••••••• (Click Call Admin)
+              </div>
             </div>
 
             {/* Dismiss button */}
