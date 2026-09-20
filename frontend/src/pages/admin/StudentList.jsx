@@ -26,6 +26,42 @@ import {
   Check,
 } from 'lucide-react';
 
+export const deriveStudentPassword = (name, department) => {
+  let cleanName = (name || '').trim();
+  if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
+    cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
+  }
+  cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
+  cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
+
+  let cleanDept = (department || '').trim();
+  if (cleanDept.includes('Computer Science') || cleanDept === 'Computer Science & Engineering') cleanDept = 'CSE';
+  else if (cleanDept.includes('Information Technology')) cleanDept = 'IT';
+  else if (cleanDept.includes('Electronics') || cleanDept.includes('ECE')) cleanDept = 'ECE';
+  else if (cleanDept.includes('Mechanical')) cleanDept = 'MECH';
+  else if (cleanDept.includes('Artificial') || cleanDept.includes('AIDS')) cleanDept = 'AIDS';
+  else if (cleanDept.includes('Electrical') || cleanDept.includes('EEE')) cleanDept = 'EEE';
+  else if (cleanDept.includes('Biomedical') || cleanDept.includes('BME')) cleanDept = 'BME';
+  else if (cleanDept.includes('Civil') || cleanDept.includes('CIVIL')) cleanDept = 'CIVIL';
+  else if (cleanDept.includes('CSBS')) cleanDept = 'CSBS';
+  else if (cleanDept.includes('CCE')) cleanDept = 'CCE';
+  else cleanDept = cleanDept.toUpperCase();
+
+  return cleanDept ? `${cleanName}${cleanDept}` : cleanName;
+};
+
+export const getStudentPassword = (student) => {
+  if (!student) return '';
+  if (student.currentPassword && student.currentPassword !== '••••••••') {
+    return student.currentPassword;
+  }
+  if (student.userId?.rawPassword && student.userId?.rawPassword !== '••••••••') {
+    return student.userId.rawPassword;
+  }
+  return deriveStudentPassword(student.name, student.department);
+};
+
 export const StudentList = () => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -225,21 +261,7 @@ export const StudentList = () => {
 
   const handleGenerateDefaultPassword = () => {
     if (!credentialsModalStudent) return;
-    let cleanName = (credentialsModalStudent.name || '').trim();
-    if (/^[A-Za-z]\.?\s+/.test(cleanName)) cleanName = cleanName.replace(/^[A-Za-z]\.?\s+/, '');
-    cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
-    cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
-    cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
-
-    const dept = (credentialsModalStudent.department || '').trim().toUpperCase();
-    let deptCode = 'CSE';
-    if (dept.includes('INFORMATION') || dept.includes('IT')) deptCode = 'IT';
-    else if (dept.includes('ELECTRONIC') || dept.includes('ECE')) deptCode = 'ECE';
-    else if (dept.includes('MECHANIC') || dept.includes('MECH')) deptCode = 'MECH';
-    else if (dept.includes('COMPUTER') || dept.includes('CSE')) deptCode = 'CSE';
-    else if (dept) deptCode = dept.split(' ')[0];
-
-    setNewPassword(`${cleanName}${deptCode}`);
+    setNewPassword(deriveStudentPassword(credentialsModalStudent.name, credentialsModalStudent.department));
     setShowCredPassword(true);
   };
 
@@ -560,6 +582,7 @@ export const StudentList = () => {
               <tr>
                 <th className="py-3.5 px-6">Roll No</th>
                 <th className="py-3.5 px-6">Student Name</th>
+                <th className="py-3.5 px-6">Login Password</th>
                 <th className="py-3.5 px-6">Gender</th>
                 <th className="py-3.5 px-6">Academic Year</th>
                 <th className="py-3.5 px-6">Department</th>
@@ -572,14 +595,14 @@ export const StudentList = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="9" className="py-12 text-center text-slate-400">
+                  <td colSpan="10" className="py-12 text-center text-slate-400">
                     <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                     Loading student records...
                   </td>
                 </tr>
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="py-10 text-center text-slate-400">
+                  <td colSpan="10" className="py-10 text-center text-slate-400">
                     No students found matching query.
                   </td>
                 </tr>
@@ -602,15 +625,28 @@ export const StudentList = () => {
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-slate-500 mt-1 flex items-center space-x-1 font-mono">
-                        <span className="text-slate-400 font-sans font-medium">Password:</span>
+                    </td>
+                    <td className="py-3.5 px-6">
+                      <div className="inline-flex items-center space-x-1.5">
                         <span
-                          className="font-mono font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 cursor-pointer hover:bg-emerald-100 transition"
+                          className="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs cursor-pointer hover:bg-emerald-100 transition select-all"
                           onClick={() => openCredentialsModal(s)}
                           title="Click to view or edit student credentials"
                         >
-                          {s.currentPassword || s.userId?.rawPassword || '••••••••'}
+                          {getStudentPassword(s)}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const pwd = getStudentPassword(s);
+                            navigator.clipboard.writeText(pwd);
+                            setNotification({ type: 'success', text: `Copied password for ${s.name}: ${pwd}` });
+                          }}
+                          className="p-1 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
+                          title="Copy password"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                     <td className="py-3.5 px-6">
@@ -917,8 +953,11 @@ export const StudentList = () => {
                       {editingStudent ? 'New Password' : 'Password'}
                     </label>
                     {editingStudent && (
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        Current: <strong className="text-emerald-700 font-semibold">{editingStudent.currentPassword || editingStudent.userId?.rawPassword || '••••••••'}</strong>
+                      <span className="text-xs text-slate-600 font-mono flex items-center space-x-1">
+                        <span>Current:</span>
+                        <strong className="text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-bold">
+                          {getStudentPassword(editingStudent)}
+                        </strong>
                       </span>
                     )}
                   </div>
@@ -1204,36 +1243,34 @@ export const StudentList = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500 font-medium">Current Password:</span>
                   <div className="flex items-center space-x-1.5">
-                    <span className="font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 select-all">
-                      {showCurrentPassword ? (
-                        credentialsModalStudent.currentPassword || credentialsModalStudent.userId?.rawPassword || '••••••••'
-                      ) : (
-                        '••••••••'
-                      )}
+                    <span className="font-mono font-bold text-sm text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 select-all">
+                      {getStudentPassword(credentialsModalStudent)}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                      className="p-1 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
-                      title={showCurrentPassword ? 'Hide current password' : 'Show current password'}
-                    >
-                      {showCurrentPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => {
-                        const pwd = credentialsModalStudent.currentPassword || credentialsModalStudent.userId?.rawPassword;
+                        const pwd = getStudentPassword(credentialsModalStudent);
                         if (pwd) {
                           navigator.clipboard.writeText(pwd);
                           setCopiedPassword(true);
                           setTimeout(() => setCopiedPassword(false), 2000);
-                          setNotification({ type: 'success', text: 'Current password copied to clipboard!' });
+                          setNotification({ type: 'success', text: `Copied current password: ${pwd}` });
                         }
                       }}
-                      className="p-1 text-slate-400 hover:text-slate-700 rounded transition cursor-pointer"
+                      className="px-2.5 py-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg border border-slate-200 transition cursor-pointer flex items-center space-x-1 text-xs font-semibold"
                       title="Copy current password"
                     >
-                      {copiedPassword ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedPassword ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-700">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
