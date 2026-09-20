@@ -87,7 +87,7 @@ export const Login = () => {
             BUS NO 09
           </span>
           <span className="text-xs text-emerald-200 font-semibold">
-            VSB Institutions • 55 Students System
+            VSB Institutions
           </span>
         </div>
       </div>
