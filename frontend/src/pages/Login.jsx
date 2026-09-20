@@ -148,19 +148,6 @@ export const Login = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-
-              {/* Password Hint Card in Green and Yellow */}
-              <div className="mt-2.5 p-2.5 rounded-xl bg-gradient-to-r from-yellow-50/80 to-emerald-50/80 border border-yellow-200/90 text-[11px] text-slate-600 leading-relaxed">
-                <span className="font-bold text-emerald-900">Student Password:</span> name (lowercase) + Department (uppercase), e.g.{' '}
-                <span className="font-bold text-emerald-700 bg-yellow-100/70 px-1.5 py-0.5 rounded border border-yellow-300/60 font-mono">
-                  kowshiekIT
-                </span>
-                ,{' '}
-                <span className="font-bold text-emerald-700 bg-yellow-100/70 px-1.5 py-0.5 rounded border border-yellow-300/60 font-mono">
-                  hariECE
-                </span>
-                .
-              </div>
             </div>
 
             <button
