@@ -170,6 +170,7 @@ export const seedDatabase = async () => {
         username,
         email,
         password,
+        rawPassword: password,
         role: 'STUDENT',
         phone,
         isActive: true,

@@ -44,15 +44,25 @@ export const getAllStudents = async (req, res) => {
     if (status) query.accountStatus = status;
 
     const students = await Student.find(query)
-      .populate('userId', 'username name email role')
+      .populate('userId', 'username name email role rawPassword')
       .sort({ rollNumber: 1 });
     const total = await Student.countDocuments();
 
+    const formattedStudents = students.map((s) => {
+      const sObj = s.toObject ? s.toObject() : { ...s };
+      const currentPassword = sObj.userId?.rawPassword || deriveStudentPassword(sObj.name, sObj.department);
+      sObj.currentPassword = currentPassword;
+      if (sObj.userId) {
+        sObj.userId.rawPassword = currentPassword;
+      }
+      return sObj;
+    });
+
     res.json({
       success: true,
-      count: students.length,
+      count: formattedStudents.length,
       total,
-      students,
+      students: formattedStudents,
     });
   } catch (error) {
     res.status(500).json({
@@ -65,12 +75,19 @@ export const getAllStudents = async (req, res) => {
 
 export const getStudentById = async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await Student.findById(req.params.id).populate('userId', 'username name email role rawPassword');
     if (!student) {
       return res.status(404).json({
         success: false,
         message: 'Student not found',
       });
+    }
+
+    const sObj = student.toObject ? student.toObject() : { ...student };
+    const currentPassword = sObj.userId?.rawPassword || deriveStudentPassword(sObj.name, sObj.department);
+    sObj.currentPassword = currentPassword;
+    if (sObj.userId) {
+      sObj.userId.rawPassword = currentPassword;
     }
 
     const device = await Device.findOne({ studentId: student._id });
@@ -81,7 +98,7 @@ export const getStudentById = async (req, res) => {
 
     res.json({
       success: true,
-      student,
+      student: sObj,
       device,
       recentAttendance,
     });
@@ -137,6 +154,7 @@ export const createStudent = async (req, res) => {
       username: deriveStudentUsername(name),
       email: email.toLowerCase().trim(),
       password: studentPassword,
+      rawPassword: studentPassword,
       role: 'STUDENT',
       phone: phone || '',
     });
@@ -249,6 +267,7 @@ export const updateStudent = async (req, res) => {
           });
         }
         user.password = cleanPassword;
+        user.rawPassword = cleanPassword;
       }
 
       await user.save();
@@ -262,16 +281,20 @@ export const updateStudent = async (req, res) => {
       ipAddress: req.ip || '',
     });
 
+    const activePassword = user?.rawPassword || deriveStudentPassword(student.name, student.department);
+
     res.json({
       success: true,
       message: 'Student updated successfully',
       student,
+      currentPassword: activePassword,
       user: user
         ? {
             _id: user._id,
             name: user.name,
             username: user.username,
             email: user.email,
+            rawPassword: activePassword,
           }
         : undefined,
     });
@@ -355,6 +378,7 @@ export const updateStudentCredentials = async (req, res) => {
         });
       }
       user.password = cleanPassword; // Mongoose pre('save') hashes password
+      user.rawPassword = cleanPassword;
       auditDetails.passwordChanged = true;
     }
 
@@ -369,14 +393,18 @@ export const updateStudentCredentials = async (req, res) => {
       status: 'SUCCESS',
     });
 
+    const activePassword = user.rawPassword || deriveStudentPassword(student.name, student.department);
+
     res.json({
       success: true,
       message: `Credentials updated successfully for ${student.name}.`,
+      currentPassword: activePassword,
       user: {
         _id: user._id,
         name: user.name,
         username: user.username,
         email: user.email,
+        rawPassword: activePassword,
       },
     });
   } catch (error) {
@@ -533,6 +561,7 @@ export const importStudents = async (req, res) => {
             username: deriveStudentUsername(name),
             email: fallbackEmail,
             password: studentPassword,
+            rawPassword: studentPassword,
             role: 'STUDENT',
             phone,
             isActive: true,

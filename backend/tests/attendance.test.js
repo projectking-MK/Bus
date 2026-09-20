@@ -1396,6 +1396,15 @@ test('29. Admin Edit Student Credentials: Admin can update username and password
   assert.equal(updateRes.status, 200);
   assert.equal(updateRes.body.success, true);
   assert.equal(updateRes.body.user.username, 'vikram_singh_test');
+  assert.equal(updateRes.body.currentPassword, 'VikramNewPass2026');
+
+  // Verify GET /api/students exposes currentPassword for admin visibility
+  const listRes = await makeRequest('GET', '/api/students', null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(listRes.status, 200);
+  const foundStudent3 = listRes.body.students.find((s) => s._id === student3._id.toString());
+  assert.equal(foundStudent3?.currentPassword, 'VikramNewPass2026');
 
   // 2. Student3 logs in with the new username and new password
   const loginRes = await makeRequest('POST', '/api/auth/login', {
