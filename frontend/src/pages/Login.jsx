@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bus, Lock, Mail, AlertCircle, ShieldCheck, Eye, EyeOff, Phone, PhoneCall, X } from 'lucide-react';
+import { Bus, Lock, Mail, AlertCircle, Eye, EyeOff, Phone, PhoneCall, X } from 'lucide-react';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -175,18 +175,6 @@ export const Login = () => {
               )}
             </button>
           </form>
-        </div>
-
-        {/* Security badges in Green and Yellow */}
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-xs text-emerald-200/90">
-          <span className="flex items-center space-x-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-yellow-400" />
-            <span>Hardware Device Binding</span>
-          </span>
-          <span className="text-yellow-400/60">•</span>
-          <span>Dynamic QR Attendance</span>
-          <span className="text-yellow-400/60">•</span>
-          <span>GPS Geofencing</span>
         </div>
 
         {/* Developer Attribution Watermark */}
