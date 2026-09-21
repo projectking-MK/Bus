@@ -48,6 +48,15 @@ export const getAllStudents = async (req, res) => {
       .sort({ rollNumber: 1 });
     const total = await Student.countDocuments();
 
+    // Query Device collection to guarantee 100% accurate device status
+    const activeDevices = await Device.find({});
+    const deviceMap = new Map();
+    activeDevices.forEach((dev) => {
+      if (dev.studentId) {
+        deviceMap.set(dev.studentId.toString(), dev);
+      }
+    });
+
     const formattedStudents = students.map((s) => {
       const sObj = s.toObject ? s.toObject() : { ...s };
       const currentPassword = sObj.userId?.rawPassword || deriveStudentPassword(sObj.name, sObj.department);
@@ -55,6 +64,29 @@ export const getAllStudents = async (req, res) => {
       if (sObj.userId) {
         sObj.userId.rawPassword = currentPassword;
       }
+
+      // Synchronize deviceRegistrationStatus with real Device collection
+      const studentDev = deviceMap.get(s._id.toString());
+      const isBound = !!studentDev;
+      sObj.deviceRegistrationStatus = isBound;
+      sObj.deviceId = isBound ? studentDev.deviceIdentifier : null;
+      sObj.registeredDevice = isBound
+        ? {
+            deviceIdentifier: studentDev.deviceIdentifier,
+            registeredAt: studentDev.registeredAt,
+            lastUsedAt: studentDev.lastUsedAt,
+            status: studentDev.status,
+          }
+        : null;
+
+      // Auto-heal Student document if out of sync
+      if (s.deviceRegistrationStatus !== isBound || (isBound && s.deviceId !== studentDev.deviceIdentifier)) {
+        Student.findByIdAndUpdate(s._id, {
+          deviceRegistrationStatus: isBound,
+          deviceId: isBound ? studentDev.deviceIdentifier : null,
+        }).exec().catch(() => {});
+      }
+
       return sObj;
     });
 
@@ -90,7 +122,12 @@ export const getStudentById = async (req, res) => {
       sObj.userId.rawPassword = currentPassword;
     }
 
-    const device = await Device.findOne({ studentId: student._id });
+    const studentDev = await Device.findOne({ studentId: student._id });
+    const isBound = !!studentDev;
+    sObj.deviceRegistrationStatus = isBound;
+    sObj.deviceId = isBound ? studentDev.deviceIdentifier : null;
+    sObj.registeredDevice = isBound ? studentDev : null;
+
     const recentAttendance = await Attendance.find({ studentId: student._id })
       .populate('tripId')
       .sort({ markedAt: -1 })

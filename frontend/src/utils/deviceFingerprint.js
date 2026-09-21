@@ -40,12 +40,21 @@ export const getOrCreateDeviceIdentifier = () => {
 
   // 4. If still not found, generate new unique cryptographic hardware device ID
   if (!deviceId) {
-    const randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
+    let randomBytes = null;
+    try {
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        randomBytes = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+    } catch (_) {}
 
-    const platform = navigator.userAgentData?.platform || navigator.platform || 'web';
-    deviceId = `DEV-${platform.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}-${randomBytes.slice(0, 12)}`;
+    if (!randomBytes) {
+      randomBytes = (Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2)).slice(0, 24);
+    }
+
+    const platform = (typeof navigator !== 'undefined' && (navigator.userAgentData?.platform || navigator.platform)) || 'web';
+    deviceId = `DEV-${String(platform).replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase()}-${randomBytes.slice(0, 12)}`;
   }
 
   // 5. Keep all persistence layers strictly synchronized

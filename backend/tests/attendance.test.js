@@ -1570,6 +1570,35 @@ test('31. First-Time Student Attendance: Automatically binds first-time device o
   const updatedStudent = await Student.findById(freshStudent._id);
   assert.equal(updatedStudent.deviceRegistrationStatus, true);
   assert.equal(updatedStudent.deviceId, 'PRAVINAA_PHONE_HARDWARE_UUID_039');
+
+  // Verify getAllStudents accurately returns deviceRegistrationStatus: true
+  const listRes = await makeRequest('GET', `/api/students?search=${encodeURIComponent(freshStudent.rollNumber)}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(listRes.status, 200);
+  const foundStudent = listRes.body.students.find((s) => s.rollNumber === freshStudent.rollNumber);
+  assert.ok(foundStudent);
+  assert.equal(foundStudent.deviceRegistrationStatus, true);
+
+  // Admin resets this student's device
+  const resetRes = await makeRequest('POST', `/api/devices/reset/${freshStudent._id}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(resetRes.status, 200);
+  assert.equal(resetRes.body.success, true);
+
+  // Verify student is now Unbound in database and in getAllStudents
+  const resetDev = await Device.findOne({ studentId: freshStudent._id });
+  assert.equal(resetDev, null);
+  const postResetStudent = await Student.findById(freshStudent._id);
+  assert.equal(postResetStudent.deviceRegistrationStatus, false);
+  assert.equal(postResetStudent.deviceId, null);
+
+  const listPostReset = await makeRequest('GET', `/api/students?search=${encodeURIComponent(freshStudent.rollNumber)}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  const foundReset = listPostReset.body.students.find((s) => s.rollNumber === freshStudent.rollNumber);
+  assert.equal(foundReset.deviceRegistrationStatus, false);
 });
 
 

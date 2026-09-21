@@ -44,6 +44,13 @@ export const registerDevice = async (req, res) => {
       existingDevice.ipAddress = req.ip || '';
       await existingDevice.save();
 
+      // Keep student document synchronized
+      if (!student.deviceRegistrationStatus || student.deviceId !== deviceIdentifier) {
+        student.deviceId = deviceIdentifier;
+        student.deviceRegistrationStatus = true;
+        await student.save();
+      }
+
       return res.json({
         success: true,
         message: 'Device verified successfully',
@@ -59,37 +66,49 @@ export const registerDevice = async (req, res) => {
 
     if (deviceBoundToOther) {
       const otherStudent = deviceBoundToOther.studentId;
-      const otherInfo = otherStudent ? `${otherStudent.rollNumber} (${otherStudent.name})` : 'another student';
+      if (otherStudent) {
+        const otherInfo = `${otherStudent.rollNumber} (${otherStudent.name})`;
 
-      await AuditLog.create({
-        action: 'DEVICE_REGISTRATION_REJECTED_ALREADY_BOUND',
-        performedBy: req.user._id,
-        targetStudentId: student._id,
-        details: {
-          deviceIdentifier,
-          alreadyBoundTo: otherInfo,
-        },
-        ipAddress: req.ip || '',
-        userAgent: userAgent || req.headers['user-agent'] || '',
-        status: 'WARNING',
-      });
+        await AuditLog.create({
+          action: 'DEVICE_REGISTRATION_REJECTED_ALREADY_BOUND',
+          performedBy: req.user._id,
+          targetStudentId: student._id,
+          details: {
+            deviceIdentifier,
+            alreadyBoundTo: otherInfo,
+          },
+          ipAddress: req.ip || '',
+          userAgent: userAgent || req.headers['user-agent'] || '',
+          status: 'WARNING',
+        });
 
-      return res.status(403).json({
-        success: false,
-        message: `Anti-Proxy Security: This device is already registered to ${otherInfo}. A physical device cannot be shared between students. Each student must use their own phone.`,
-      });
+        return res.status(403).json({
+          success: false,
+          message: `Anti-Proxy Security: This device is already registered to ${otherInfo}. A physical device cannot be shared between students. Each student must use their own phone.`,
+        });
+      } else {
+        // Clean up orphaned device record from a deleted student
+        await Device.deleteOne({ _id: deviceBoundToOther._id });
+      }
     }
 
-    // Register new device
-    const newDevice = await Device.create({
-      studentId: student._id,
-      deviceIdentifier,
-      userAgent: userAgent || req.headers['user-agent'] || '',
-      ipAddress: req.ip || '',
-      registeredAt: new Date(),
-      lastUsedAt: new Date(),
-      status: 'ACTIVE',
-    });
+    // Register new device with upsert to prevent duplicate key race conditions
+    const newDevice = await Device.findOneAndUpdate(
+      { studentId: student._id },
+      {
+        $set: {
+          deviceIdentifier,
+          userAgent: userAgent || req.headers['user-agent'] || '',
+          ipAddress: req.ip || '',
+          lastUsedAt: new Date(),
+          status: 'ACTIVE',
+        },
+        $setOnInsert: {
+          registeredAt: new Date(),
+        },
+      },
+      { upsert: true, new: true }
+    );
 
     student.deviceId = deviceIdentifier;
     student.deviceRegistrationStatus = true;
@@ -139,6 +158,9 @@ export const resetDevice = async (req, res) => {
     }
 
     await Device.deleteMany({ studentId: student._id });
+    if (student.deviceId) {
+      await Device.deleteMany({ deviceIdentifier: student.deviceId });
+    }
 
     student.deviceId = null;
     student.deviceRegistrationStatus = false;

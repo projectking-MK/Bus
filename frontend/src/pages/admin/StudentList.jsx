@@ -137,7 +137,12 @@ export const StudentList = () => {
   }, [search, deptFilter, genderFilter]);
 
   const handleResetDevice = async (student) => {
-    if (!window.confirm(`Reset device binding for ${student.name} (${student.rollNumber})? This allows them to bind a new mobile phone on next login.`)) {
+    const isBound = student.deviceRegistrationStatus;
+    const promptText = isBound
+      ? `Reset device binding for ${student.name} (${student.rollNumber})?\n\nThis will unbind their current phone (${student.deviceId || 'Registered Device'}) and allow them to register their mobile phone on their next scan/login.`
+      : `Clear any previous device bindings or locks for ${student.name} (${student.rollNumber})?\n\nThis guarantees their mobile phone will be bound freshly on their next scan.`;
+
+    if (!window.confirm(promptText)) {
       return;
     }
 
@@ -497,10 +502,10 @@ export const StudentList = () => {
             onClick={handleUnbindAll}
             disabled={unbindingAll}
             className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-xl text-sm transition shadow-sm flex items-center space-x-2 cursor-pointer"
-            title="Unbind all registered student devices"
+            title="Unbind all registered student devices for all 55 students"
           >
             <Smartphone className="w-4 h-4 text-amber-600" />
-            <span>{unbindingAll ? 'Unbinding...' : 'Unbind'}</span>
+            <span>{unbindingAll ? 'Unbinding All Devices...' : 'Unbind All Devices'}</span>
           </button>
           <button
             type="button"
@@ -697,14 +702,24 @@ export const StudentList = () => {
                     </td>
                     <td className="py-3.5 px-6">
                       {s.deviceRegistrationStatus ? (
-                        <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg">
+                        <button
+                          type="button"
+                          onClick={() => handleResetDevice(s)}
+                          className="inline-flex items-center space-x-1.5 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg cursor-pointer transition text-left"
+                          title={`Device Bound (${s.deviceId || 'Hardware Device'}). Click to reset/unbind.`}
+                        >
                           <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                          <span className="font-mono text-[11px]">Bound</span>
-                        </div>
+                          <span className="font-mono text-[11px] font-semibold">Bound</span>
+                        </button>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-500">
-                          Unbound
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleResetDevice(s)}
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200 cursor-pointer transition text-left"
+                          title="Device Unbound. Device will bind automatically on scan. Click to clear any device locks."
+                        >
+                          <span>Unbound</span>
+                        </button>
                       )}
                     </td>
                     <td className="py-3.5 px-6">
@@ -758,15 +773,21 @@ export const StudentList = () => {
                         >
                           <Percent className="w-4 h-4" />
                         </button>
-                        {s.deviceRegistrationStatus && (
-                          <button
-                            onClick={() => handleResetDevice(s)}
-                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                            title="Reset Device Binding"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleResetDevice(s)}
+                          className={`p-1.5 rounded-lg transition ${
+                            s.deviceRegistrationStatus
+                              ? 'text-amber-600 hover:bg-amber-50'
+                              : 'text-slate-400 hover:text-amber-600 hover:bg-slate-100'
+                          }`}
+                          title={
+                            s.deviceRegistrationStatus
+                              ? `Reset / Unbind Device for ${s.name} (${s.deviceId || 'Bound'})`
+                              : `Unbound (Click to reset/clear device locks for ${s.name})`
+                          }
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => openEdit(s)}
                           className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"

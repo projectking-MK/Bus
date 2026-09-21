@@ -97,33 +97,45 @@ export const markAttendance = async (req, res) => {
 
       if (deviceBoundToOther) {
         const otherStudent = deviceBoundToOther.studentId;
-        const otherInfo = otherStudent ? `${otherStudent.rollNumber} (${otherStudent.name})` : 'another student';
+        if (otherStudent) {
+          const otherInfo = `${otherStudent.rollNumber} (${otherStudent.name})`;
 
-        await AuditLog.create({
-          action: 'DEVICE_REGISTRATION_REJECTED_ALREADY_BOUND',
-          performedBy: user._id,
-          targetStudentId: student._id,
-          details: { deviceIdentifier: deviceId, alreadyBoundTo: otherInfo },
-          ipAddress: req.ip || '',
-          status: 'WARNING',
-        });
+          await AuditLog.create({
+            action: 'DEVICE_REGISTRATION_REJECTED_ALREADY_BOUND',
+            performedBy: user._id,
+            targetStudentId: student._id,
+            details: { deviceIdentifier: deviceId, alreadyBoundTo: otherInfo },
+            ipAddress: req.ip || '',
+            status: 'WARNING',
+          });
 
-        return res.status(403).json({
-          success: false,
-          message: `Anti-Proxy Security: This device is already registered to ${otherInfo}. A physical device cannot be shared between students. Each student must use their own phone.`,
-        });
+          return res.status(403).json({
+            success: false,
+            message: `Anti-Proxy Security: This device is already registered to ${otherInfo}. A physical device cannot be shared between students. Each student must use their own phone.`,
+          });
+        } else {
+          // Clean up orphaned device record from a deleted student
+          await Device.deleteOne({ _id: deviceBoundToOther._id });
+        }
       }
 
-      // First-time device registration: automatically bind this device to the student
-      registeredDevice = await Device.create({
-        studentId: student._id,
-        deviceIdentifier: deviceId,
-        userAgent: req.headers['user-agent'] || '',
-        ipAddress: req.ip || '',
-        registeredAt: new Date(),
-        lastUsedAt: new Date(),
-        status: 'ACTIVE',
-      });
+      // First-time device registration: automatically bind this device to the student (upsert prevents race conditions)
+      registeredDevice = await Device.findOneAndUpdate(
+        { studentId: student._id },
+        {
+          $set: {
+            deviceIdentifier: deviceId,
+            userAgent: req.headers['user-agent'] || '',
+            ipAddress: req.ip || '',
+            lastUsedAt: new Date(),
+            status: 'ACTIVE',
+          },
+          $setOnInsert: {
+            registeredAt: new Date(),
+          },
+        },
+        { upsert: true, new: true }
+      );
 
       student.deviceId = deviceId;
       student.deviceRegistrationStatus = true;
@@ -154,6 +166,13 @@ export const markAttendance = async (req, res) => {
     } else {
       registeredDevice.lastUsedAt = new Date();
       await registeredDevice.save();
+
+      // Ensure student document has deviceId and deviceRegistrationStatus synchronized
+      if (!student.deviceRegistrationStatus || student.deviceId !== deviceId) {
+        student.deviceId = deviceId;
+        student.deviceRegistrationStatus = true;
+        await student.save();
+      }
     }
 
     // 6, 7 & 8. Dynamic QR validation

@@ -1,4 +1,5 @@
 import { Student } from '../models/Student.js';
+import { Device } from '../models/Device.js';
 import { Attendance } from '../models/Attendance.js';
 import { BusTrip } from '../models/BusTrip.js';
 import { Bus } from '../models/Bus.js';
@@ -15,7 +16,7 @@ export const getDashboardSummary = async (req, res) => {
     const allStudents = await Student.find({ accountStatus: 'ACTIVE' }).sort({ rollNumber: 1 });
     const totalStudents = allStudents.length || 55;
     const activeStudents = allStudents.length || 55;
-    const registeredDevices = allStudents.filter((s) => s.deviceRegistrationStatus).length;
+    const registeredDevices = await Device.countDocuments({ status: 'ACTIVE' });
 
     let totalBoys = 0;
     let totalGirls = 0;
