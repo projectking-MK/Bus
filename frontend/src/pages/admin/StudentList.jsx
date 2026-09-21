@@ -26,6 +26,62 @@ import {
   Check,
 } from 'lucide-react';
 
+export const DEPARTMENT_OPTIONS = [
+  { code: 'CSE', label: 'CSE - Computer Science & Engineering' },
+  { code: 'IT', label: 'IT - Information Technology' },
+  { code: 'ECE', label: 'ECE - Electronics & Communication' },
+  { code: 'AIDS', label: 'AIDS - AI & Data Science' },
+  { code: 'AIML', label: 'AIML - AI & Machine Learning' },
+  { code: 'CSBS', label: 'CSBS - Computer Science & Business Systems' },
+  { code: 'MECH', label: 'MECH - Mechanical Engineering' },
+  { code: 'EEE', label: 'EEE - Electrical & Electronics' },
+  { code: 'BME', label: 'BME - Biomedical Engineering' },
+  { code: 'CCE', label: 'CCE - Computer & Communication' },
+  { code: 'CIVIL', label: 'CIVIL - Civil Engineering' },
+  { code: 'BIO-TECH', label: 'BIO-TECH - Biotechnology' },
+];
+
+export const DEPARTMENT_ALIASES = {
+  CSE: ['CSE', 'Computer Science & Engineering', 'Computer Science and Engineering', 'Computer Science'],
+  IT: ['IT', 'Information Technology'],
+  ECE: ['ECE', 'Electronics & Communication', 'Electronics & Communication Engineering', 'Electronics and Communication Engineering', 'Electronics and Communication'],
+  AIDS: ['AIDS', 'AI&DS', 'AI & DS', 'Artificial Intelligence & Data Science', 'Artificial Intelligence and Data Science'],
+  AIML: ['AIML', 'AI&ML', 'AI & ML', 'Artificial Intelligence & Machine Learning', 'Artificial Intelligence and Machine Learning'],
+  CSBS: ['CSBS', 'Computer Science & Business Systems', 'Computer Science and Business Systems'],
+  MECH: ['MECH', 'Mechanical Engineering', 'Mechanical'],
+  EEE: ['EEE', 'Electrical & Electronics', 'Electrical & Electronics Engineering', 'Electrical and Electronics Engineering', 'Electrical and Electronics'],
+  BME: ['BME', 'Biomedical Engineering', 'Biomedical'],
+  CCE: ['CCE', 'Computer & Communication', 'Computer and Communication Engineering', 'Computer & Communication Engineering'],
+  CIVIL: ['CIVIL', 'Civil Engineering', 'Civil'],
+  'BIO-TECH': ['BIO-TECH', 'BIOTECH', 'Biotechnology', 'Bio-Technology', 'Bio Technology'],
+};
+
+export const normalizeDeptCode = (dept) => {
+  if (!dept) return 'CSE';
+  const clean = String(dept).trim().toLowerCase();
+  for (const [code, aliases] of Object.entries(DEPARTMENT_ALIASES)) {
+    if (code.toLowerCase() === clean || aliases.some((a) => a.toLowerCase() === clean)) {
+      return code;
+    }
+  }
+  return String(dept).trim().toUpperCase();
+};
+
+export const isDeptMatch = (deptA, deptB) => {
+  if (!deptA || !deptB) return false;
+  const a = String(deptA).trim().toLowerCase();
+  const b = String(deptB).trim().toLowerCase();
+  if (a === b) return true;
+
+  for (const aliases of Object.values(DEPARTMENT_ALIASES)) {
+    const lowerAliases = aliases.map((x) => x.toLowerCase());
+    const matchesA = lowerAliases.includes(a);
+    const matchesB = lowerAliases.includes(b);
+    if (matchesA && matchesB) return true;
+  }
+  return a.includes(b) || b.includes(a);
+};
+
 export const deriveStudentPassword = (name, department) => {
   let cleanName = (name || '').trim();
   if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
@@ -35,19 +91,7 @@ export const deriveStudentPassword = (name, department) => {
   cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
   cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
 
-  let cleanDept = (department || '').trim();
-  if (cleanDept.includes('Computer Science') || cleanDept === 'Computer Science & Engineering') cleanDept = 'CSE';
-  else if (cleanDept.includes('Information Technology')) cleanDept = 'IT';
-  else if (cleanDept.includes('Electronics') || cleanDept.includes('ECE')) cleanDept = 'ECE';
-  else if (cleanDept.includes('Mechanical')) cleanDept = 'MECH';
-  else if (cleanDept.includes('Artificial') || cleanDept.includes('AIDS')) cleanDept = 'AIDS';
-  else if (cleanDept.includes('Electrical') || cleanDept.includes('EEE')) cleanDept = 'EEE';
-  else if (cleanDept.includes('Biomedical') || cleanDept.includes('BME')) cleanDept = 'BME';
-  else if (cleanDept.includes('Civil') || cleanDept.includes('CIVIL')) cleanDept = 'CIVIL';
-  else if (cleanDept.includes('CSBS')) cleanDept = 'CSBS';
-  else if (cleanDept.includes('CCE')) cleanDept = 'CCE';
-  else cleanDept = cleanDept.toUpperCase();
-
+  const cleanDept = normalizeDeptCode(department || '');
   return cleanDept ? `${cleanName}${cleanDept}` : cleanName;
 };
 
@@ -99,7 +143,7 @@ export const StudentList = () => {
     email: '',
     phone: '',
     gender: 'Male',
-    department: 'Computer Science & Engineering',
+    department: 'CSE',
     year: '3rd Year',
     attendancePercentage: 0,
     username: '',
@@ -119,6 +163,9 @@ export const StudentList = () => {
         let list = res.data.students;
         if (genderFilter) {
           list = list.filter((s) => (s.gender || 'Male').toLowerCase() === genderFilter.toLowerCase());
+        }
+        if (deptFilter) {
+          list = list.filter((s) => isDeptMatch(s.department, deptFilter));
         }
         setStudents(list);
       }
@@ -274,7 +321,7 @@ export const StudentList = () => {
       email: s.email,
       phone: s.phone || '',
       gender: s.gender || 'Male',
-      department: s.department,
+      department: normalizeDeptCode(s.department),
       year: s.year,
       accountStatus: s.accountStatus,
       attendancePercentage: s.attendancePercentage ?? 0,
@@ -532,7 +579,7 @@ export const StudentList = () => {
                 email: '',
                 phone: '',
                 gender: 'Male',
-                department: 'Computer Science & Engineering',
+                department: 'CSE',
                 year: '3rd Year',
               });
               setIsAddModalOpen(true);
@@ -599,11 +646,12 @@ export const StudentList = () => {
             onChange={(e) => setDeptFilter(e.target.value)}
             className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
-            <option value="">All Departments</option>
-            <option value="Computer Science & Engineering">Computer Science & Engineering</option>
-            <option value="Information Technology">Information Technology</option>
-            <option value="Electronics & Communication">Electronics & Communication</option>
-            <option value="Mechanical Engineering">Mechanical Engineering</option>
+            <option value="">All Departments (12)</option>
+            {DEPARTMENT_OPTIONS.map((dept) => (
+              <option key={dept.code} value={dept.code}>
+                {dept.label}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -989,10 +1037,14 @@ export const StudentList = () => {
                   onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 >
-                  <option value="Computer Science & Engineering">Computer Science & Engineering</option>
-                  <option value="Information Technology">Information Technology</option>
-                  <option value="Electronics & Communication">Electronics & Communication</option>
-                  <option value="Mechanical Engineering">Mechanical Engineering</option>
+                  {DEPARTMENT_OPTIONS.map((dept) => (
+                    <option key={dept.code} value={dept.code}>
+                      {dept.label}
+                    </option>
+                  ))}
+                  {!DEPARTMENT_OPTIONS.some((d) => d.code === formData.department) && formData.department && (
+                    <option value={formData.department}>{formData.department}</option>
+                  )}
                 </select>
               </div>
 

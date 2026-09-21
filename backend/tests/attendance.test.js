@@ -1601,6 +1601,48 @@ test('31. First-Time Student Attendance: Automatically binds first-time device o
   assert.equal(foundReset.deviceRegistrationStatus, false);
 });
 
+test('32. Admin Department Filter: accurately filters students by short code (CSE, IT, ECE) and full name (Computer Science & Engineering)', async () => {
+  // Query by short code "CSE"
+  const resCode = await makeRequest('GET', '/api/students?department=CSE', null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(resCode.status, 200);
+  assert.equal(resCode.body.success, true);
+  assert.ok(resCode.body.students.length > 0);
+  // All returned students should belong to CSE or Computer Science & Engineering
+  resCode.body.students.forEach((s) => {
+    const isCSE = /cse|computer\s+science/i.test(s.department);
+    assert.ok(isCSE, `Expected student department to be CSE, got ${s.department}`);
+  });
+
+  // Query by full title "Computer Science & Engineering"
+  const resFull = await makeRequest('GET', `/api/students?department=${encodeURIComponent('Computer Science & Engineering')}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(resFull.status, 200);
+  assert.equal(resFull.body.success, true);
+  assert.equal(resFull.body.students.length, resCode.body.students.length);
+
+  // Query by short code "IT" vs "Information Technology"
+  const resITCode = await makeRequest('GET', '/api/students?department=IT', null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(resITCode.status, 200);
+  assert.equal(resITCode.body.success, true);
+  assert.ok(resITCode.body.students.length > 0);
+  resITCode.body.students.forEach((s) => {
+    const isIT = /^it$|information\s+technology/i.test(s.department);
+    assert.ok(isIT, `Expected student department to be IT, got ${s.department}`);
+  });
+
+  const resITFull = await makeRequest('GET', `/api/students?department=${encodeURIComponent('Information Technology')}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(resITFull.status, 200);
+  assert.equal(resITFull.body.success, true);
+  assert.equal(resITFull.body.students.length, resITCode.body.students.length);
+});
+
 
 
 

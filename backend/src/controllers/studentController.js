@@ -4,6 +4,32 @@ import { Device } from '../models/Device.js';
 import { Attendance } from '../models/Attendance.js';
 import { AuditLog } from '../models/AuditLog.js';
 
+export const DEPARTMENT_ALIASES = {
+  CSE: ['CSE', 'Computer Science & Engineering', 'Computer Science and Engineering', 'Computer Science'],
+  IT: ['IT', 'Information Technology'],
+  ECE: ['ECE', 'Electronics & Communication', 'Electronics & Communication Engineering', 'Electronics and Communication Engineering', 'Electronics and Communication'],
+  AIDS: ['AIDS', 'AI&DS', 'AI & DS', 'Artificial Intelligence & Data Science', 'Artificial Intelligence and Data Science'],
+  AIML: ['AIML', 'AI&ML', 'AI & ML', 'Artificial Intelligence & Machine Learning', 'Artificial Intelligence and Machine Learning'],
+  CSBS: ['CSBS', 'Computer Science & Business Systems', 'Computer Science and Business Systems'],
+  MECH: ['MECH', 'Mechanical Engineering', 'Mechanical'],
+  EEE: ['EEE', 'Electrical & Electronics', 'Electrical & Electronics Engineering', 'Electrical and Electronics Engineering', 'Electrical and Electronics'],
+  BME: ['BME', 'Biomedical Engineering', 'Biomedical'],
+  CCE: ['CCE', 'Computer & Communication', 'Computer and Communication Engineering', 'Computer & Communication Engineering'],
+  CIVIL: ['CIVIL', 'Civil Engineering', 'Civil'],
+  'BIO-TECH': ['BIO-TECH', 'BIOTECH', 'Biotechnology', 'Bio-Technology', 'Bio Technology'],
+};
+
+export const normalizeDeptCode = (dept) => {
+  if (!dept) return 'CSE';
+  const clean = String(dept).trim().toLowerCase();
+  for (const [code, aliases] of Object.entries(DEPARTMENT_ALIASES)) {
+    if (code.toLowerCase() === clean || aliases.some((a) => a.toLowerCase() === clean)) {
+      return code;
+    }
+  }
+  return String(dept).trim().toUpperCase();
+};
+
 export const deriveStudentUsername = (name) => {
   let cleanName = (name || '').trim();
   if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
@@ -22,7 +48,7 @@ export const deriveStudentPassword = (name, department) => {
   cleanName = cleanName.replace(/\s+([A-Za-z]\.?)+$/g, '');
   cleanName = cleanName.replace(/(\s+[A-Za-z]\.?)+$/g, '');
   cleanName = cleanName.replace(/[\s\.]+/g, '').toLowerCase();
-  const cleanDept = (department || '').trim().toUpperCase();
+  const cleanDept = normalizeDeptCode(department || '');
   return cleanDept ? `${cleanName}${cleanDept}` : cleanName;
 };
 
@@ -39,7 +65,28 @@ export const getAllStudents = async (req, res) => {
       ];
     }
 
-    if (department) query.department = department;
+    if (department && department.trim()) {
+      const cleanDept = department.trim();
+      let matchedKey = null;
+      for (const [key, aliases] of Object.entries(DEPARTMENT_ALIASES)) {
+        if (
+          key.toLowerCase() === cleanDept.toLowerCase() ||
+          aliases.some((a) => a.toLowerCase() === cleanDept.toLowerCase())
+        ) {
+          matchedKey = key;
+          break;
+        }
+      }
+
+      if (matchedKey) {
+        const patterns = DEPARTMENT_ALIASES[matchedKey];
+        query.department = {
+          $in: patterns.map((p) => new RegExp(`^${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')),
+        };
+      } else {
+        query.department = { $regex: cleanDept.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+      }
+    }
     if (year) query.year = year;
     if (status) query.accountStatus = status;
 
