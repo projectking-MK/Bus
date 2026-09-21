@@ -1643,6 +1643,38 @@ test('32. Admin Department Filter: accurately filters students by short code (CS
   assert.equal(resITFull.body.students.length, resITCode.body.students.length);
 });
 
+test('33. Admin Academic Year Filter: accurately filters students by academic year (2nd Year, 3rd Year, or digit)', async () => {
+  // Query 2nd Year
+  const res2 = await makeRequest('GET', `/api/students?year=${encodeURIComponent('2nd Year')}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(res2.status, 200);
+  assert.equal(res2.body.success, true);
+  assert.ok(res2.body.students.length > 0);
+  res2.body.students.forEach((s) => {
+    assert.ok(s.year.includes('2'), `Expected 2nd year student, got ${s.year}`);
+  });
+
+  // Query 3rd Year
+  const res3 = await makeRequest('GET', `/api/students?year=${encodeURIComponent('3rd Year')}`, null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(res3.status, 200);
+  assert.equal(res3.body.success, true);
+  assert.ok(res3.body.students.length > 0);
+  res3.body.students.forEach((s) => {
+    assert.ok(s.year.includes('3'), `Expected 3rd year student, got ${s.year}`);
+  });
+
+  // Query by digit '3'
+  const resDigit = await makeRequest('GET', '/api/students?year=3', null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(resDigit.status, 200);
+  assert.equal(resDigit.body.success, true);
+  assert.equal(resDigit.body.students.length, res3.body.students.length);
+});
+
 
 
 

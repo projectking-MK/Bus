@@ -87,7 +87,16 @@ export const getAllStudents = async (req, res) => {
         query.department = { $regex: cleanDept.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
       }
     }
-    if (year) query.year = year;
+
+    if (year && year.trim()) {
+      const cleanYear = year.trim();
+      const digitMatch = cleanYear.match(/\d+/)?.[0];
+      if (digitMatch) {
+        query.year = { $regex: new RegExp(`^${digitMatch}(st|nd|rd|th)?(\\s*year)?$`, 'i') };
+      } else {
+        query.year = { $regex: cleanYear.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+      }
+    }
     if (status) query.accountStatus = status;
 
     const students = await Student.find(query)

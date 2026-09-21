@@ -82,6 +82,24 @@ export const isDeptMatch = (deptA, deptB) => {
   return a.includes(b) || b.includes(a);
 };
 
+export const YEAR_OPTIONS = [
+  { value: '1st Year', label: '1st Year' },
+  { value: '2nd Year', label: '2nd Year' },
+  { value: '3rd Year', label: '3rd Year' },
+  { value: '4th Year', label: '4th Year' },
+];
+
+export const isYearMatch = (studentYear, filterYear) => {
+  if (!studentYear || !filterYear) return false;
+  const sy = String(studentYear).trim().toLowerCase();
+  const fy = String(filterYear).trim().toLowerCase();
+  if (sy === fy) return true;
+  const sDigit = sy.match(/\d+/)?.[0];
+  const fDigit = fy.match(/\d+/)?.[0];
+  if (sDigit && fDigit && sDigit === fDigit) return true;
+  return sy.includes(fy) || fy.includes(sy);
+};
+
 export const deriveStudentPassword = (name, department) => {
   let cleanName = (name || '').trim();
   if (/^[A-Za-z]\.?\s+/.test(cleanName)) {
@@ -112,6 +130,7 @@ export const StudentList = () => {
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
   const [notification, setNotification] = useState(null);
 
   // Modals state
@@ -157,6 +176,7 @@ export const StudentList = () => {
         params: {
           search: search || undefined,
           department: deptFilter || undefined,
+          year: yearFilter || undefined,
         },
       });
       if (res.data.success) {
@@ -166,6 +186,9 @@ export const StudentList = () => {
         }
         if (deptFilter) {
           list = list.filter((s) => isDeptMatch(s.department, deptFilter));
+        }
+        if (yearFilter) {
+          list = list.filter((s) => isYearMatch(s.year, yearFilter));
         }
         setStudents(list);
       }
@@ -181,7 +204,7 @@ export const StudentList = () => {
       fetchStudents();
     }, 300);
     return () => clearTimeout(delayDebounce);
-  }, [search, deptFilter, genderFilter]);
+  }, [search, deptFilter, genderFilter, yearFilter]);
 
   const handleResetDevice = async (student) => {
     const isBound = student.deviceRegistrationStatus;
@@ -628,7 +651,7 @@ export const StudentList = () => {
           />
         </div>
 
-        <div className="w-full md:w-48">
+        <div className="w-full md:w-44">
           <select
             value={genderFilter}
             onChange={(e) => setGenderFilter(e.target.value)}
@@ -640,7 +663,22 @@ export const StudentList = () => {
           </select>
         </div>
 
-        <div className="w-full md:w-64">
+        <div className="w-full md:w-36">
+          <select
+            value={yearFilter}
+            onChange={(e) => setYearFilter(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">All Academic Years</option>
+            {YEAR_OPTIONS.map((y) => (
+              <option key={y.value} value={y.value}>
+                {y.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-full md:w-56">
           <select
             value={deptFilter}
             onChange={(e) => setDeptFilter(e.target.value)}
@@ -662,6 +700,7 @@ export const StudentList = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold border-b border-slate-100">
               <tr>
+                <th className="py-3.5 px-4 text-center w-14">S.No</th>
                 <th className="py-3.5 px-6">Roll No</th>
                 <th className="py-3.5 px-6">Student Name</th>
                 <th className="py-3.5 px-6">Login Password</th>
@@ -677,20 +716,23 @@ export const StudentList = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="10" className="py-12 text-center text-slate-400">
+                  <td colSpan="11" className="py-12 text-center text-slate-400">
                     <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                     Loading student records...
                   </td>
                 </tr>
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="py-10 text-center text-slate-400">
+                  <td colSpan="11" className="py-10 text-center text-slate-400">
                     No students found matching query.
                   </td>
                 </tr>
               ) : (
-                students.map((s) => (
+                students.map((s, index) => (
                   <tr key={s._id} className="hover:bg-slate-50/80 transition">
+                    <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-500">
+                      {index + 1}
+                    </td>
                     <td className="py-3.5 px-6 font-mono font-bold text-slate-900">
                       {s.rollNumber}
                     </td>
