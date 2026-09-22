@@ -16,27 +16,14 @@ export const Navbar = () => {
   };
 
   const isActive = (path) => location.pathname === path;
-  const isStudentView = user.role === 'STUDENT' || location.pathname.startsWith('/student');
 
   return (
-    <header
-      className={`sticky top-0 z-40 backdrop-blur transition-colors ${
-        isStudentView
-          ? 'bg-[#050b07]/95 border-b border-emerald-500/25 shadow-md shadow-emerald-950/40 text-slate-100'
-          : 'bg-white/95 border-b border-slate-200 shadow-sm'
-      }`}
-    >
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Title */}
           <div className="flex items-center space-x-3">
-            <div
-              className={`w-10 h-10 rounded-xl overflow-hidden shadow-md border-2 flex items-center justify-center flex-shrink-0 ${
-                isStudentView
-                  ? 'border-yellow-400/70 shadow-emerald-900/30 bg-[#09150e]'
-                  : 'border-yellow-400 shadow-yellow-500/20 bg-yellow-50'
-              }`}
-            >
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center bg-yellow-50 flex-shrink-0">
               <img
                 src="/bus-logo.jpg"
                 alt="VSB Institutions Bus 09"
@@ -45,27 +32,14 @@ export const Navbar = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span
-                  className={`font-black tracking-tight text-lg ${
-                    isStudentView ? 'text-slate-100' : 'text-slate-900'
-                  }`}
-                >
-                  <span className={isStudentView ? 'text-emerald-400' : 'text-emerald-700'}>
-                    Smart
-                  </span>
-                  Bus
+                <span className="font-black text-slate-900 tracking-tight text-lg">
+                  <span className="text-emerald-700">Smart</span>Bus
                 </span>
                 <span className="text-xs px-2 py-0.5 rounded-full font-black bg-yellow-400 text-slate-950 shadow-xs">
                   BUS-09
                 </span>
               </div>
-              <p
-                className={`text-xs hidden sm:block ${
-                  isStudentView ? 'text-emerald-400/70 font-mono' : 'text-slate-500 font-medium'
-                }`}
-              >
-                VSB Institutions • Bus Attendance
-              </p>
+              <p className="text-xs text-slate-500 hidden sm:block font-medium">VSB Institutions • Bus Attendance</p>
             </div>
           </div>
 
@@ -139,24 +113,24 @@ export const Navbar = () => {
               <>
                 <Link
                   to="/student/dashboard"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wider transition ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
                     isActive('/student/dashboard')
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
-                      : 'text-slate-400 hover:text-emerald-300 hover:bg-[#09150e]'
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
-                  OVERVIEW
+                  Overview
                 </Link>
                 <Link
                   to="/student/scan"
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold tracking-wider transition flex items-center space-x-1.5 ${
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 ${
                     isActive('/student/scan')
-                      ? 'bg-gradient-to-r from-emerald-400 to-yellow-400 text-slate-950 font-black shadow-md shadow-emerald-500/20'
-                      : 'bg-yellow-400/10 text-yellow-300 hover:bg-yellow-400/20 border border-yellow-400/30'
+                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300'
+                      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
                   }`}
                 >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>SCAN RADAR</span>
+                  <QrCode className="w-4 h-4" />
+                  <span>Scan Attendance</span>
                 </Link>
               </>
             )}
@@ -166,11 +140,7 @@ export const Navbar = () => {
           <div className="flex items-center space-x-3">
             <div className="text-right">
               <div className="flex items-center justify-end space-x-1.5">
-                <span
-                  className={`text-sm font-semibold ${
-                    isStudentView ? 'text-slate-200' : 'text-slate-800'
-                  }`}
-                >
+                <span className="text-sm font-semibold text-slate-800">
                   {user.role === 'ADMIN'
                     ? (user.name && !user.name.includes('Ramanathan') ? user.name : 'R. Kowshiek IT')
                     : user.role === 'DRIVER'
@@ -183,8 +153,6 @@ export const Navbar = () => {
                       ? 'bg-purple-100 text-purple-700'
                       : user.role === 'DRIVER'
                       ? 'bg-amber-100 text-amber-800'
-                      : isStudentView
-                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 font-mono font-black'
                       : 'bg-emerald-100 text-emerald-800'
                   }`}
                 >
@@ -192,11 +160,7 @@ export const Navbar = () => {
                 </span>
               </div>
               {student && (
-                <p
-                  className={`text-xs font-mono ${
-                    isStudentView ? 'text-emerald-400/90 font-bold' : 'text-slate-500'
-                  }`}
-                >
+                <p className="text-xs text-slate-500 font-mono">
                   Roll: {student.rollNumber}
                 </p>
               )}
@@ -204,11 +168,7 @@ export const Navbar = () => {
 
             <button
               onClick={handleLogout}
-              className={`p-2 rounded-lg transition ${
-                isStudentView
-                  ? 'text-slate-400 hover:text-rose-400 hover:bg-rose-500/10'
-                  : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50'
-              }`}
+              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />
@@ -219,19 +179,11 @@ export const Navbar = () => {
 
       {/* Mobile bottom nav for students */}
       {user.role === 'STUDENT' && (
-        <div
-          className={`md:hidden border-t px-4 py-2 flex justify-around items-center ${
-            isStudentView
-              ? 'border-emerald-500/20 bg-[#050b07]/95 backdrop-blur text-slate-400'
-              : 'border-slate-200 bg-white'
-          }`}
-        >
+        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-2 flex justify-around items-center">
           <Link
             to="/student/dashboard"
             className={`flex flex-col items-center py-1 px-3 text-xs font-medium rounded-lg ${
-              isActive('/student/dashboard')
-                ? isStudentView ? 'text-emerald-400 font-bold font-mono' : 'text-indigo-600'
-                : isStudentView ? 'text-slate-400 hover:text-emerald-300' : 'text-slate-500'
+              isActive('/student/dashboard') ? 'text-indigo-600' : 'text-slate-500'
             }`}
           >
             <User className="w-5 h-5 mb-0.5" />
@@ -240,9 +192,7 @@ export const Navbar = () => {
           <Link
             to="/student/scan"
             className={`flex flex-col items-center py-1 px-3 text-xs font-medium rounded-lg ${
-              isActive('/student/scan')
-                ? isStudentView ? 'text-yellow-400 font-bold font-mono' : 'text-indigo-600 font-bold'
-                : isStudentView ? 'text-slate-400 hover:text-yellow-300' : 'text-slate-500'
+              isActive('/student/scan') ? 'text-indigo-600 font-bold' : 'text-slate-500'
             }`}
           >
             <QrCode className="w-5 h-5 mb-0.5" />
