@@ -533,7 +533,6 @@ export const StudentDashboard = () => {
           <div className="px-6 py-5 border-b border-emerald-500/20 flex items-center justify-between">
             <div>
               <h3 className="text-base font-bold text-white font-mono">My Attendance History</h3>
-              <p className="text-xs font-mono text-emerald-400/70">// Personal boarding and verification telemetry</p>
             </div>
             <button
               onClick={fetchStudentData}
