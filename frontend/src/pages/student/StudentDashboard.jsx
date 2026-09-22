@@ -171,390 +171,423 @@ export const StudentDashboard = () => {
   }, [activeTrip?._id, isTripAuthenticated]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-      {/* Student Profile Card */}
-      <div className="bg-gradient-to-r from-indigo-900 to-indigo-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl mb-6 relative overflow-hidden">
-        {/* Background watermark */}
-        <Bus className="absolute -right-6 -bottom-6 w-44 h-44 text-white/5 pointer-events-none" />
+    <div className="min-h-[calc(100vh-4rem)] bg-[#050b07] text-slate-100 relative overflow-hidden font-sans pb-16 select-none">
+      {/* Background Cyber Glow Orbs */}
+      <div className="absolute -top-32 -left-32 w-[500px] h-[500px] bg-emerald-500/12 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-1/3 -right-32 w-[500px] h-[500px] bg-yellow-400/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute -bottom-32 left-1/3 w-[600px] h-[600px] bg-emerald-400/8 rounded-full blur-[140px] pointer-events-none"></div>
 
-        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center space-x-2 mb-2">
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-white/20 text-white border border-white/20 font-mono">
-                {student?.rollNumber || 'STUDENT'}
-              </span>
-              <span className="text-xs text-indigo-200">
-                {student?.year || '3rd Year'}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-              {student?.name || user?.name}
-            </h1>
-            <p className="text-xs sm:text-sm text-indigo-200 mt-1">
-              {student?.department || 'Computer Science & Engineering'}
-            </p>
-          </div>
+      {/* Cyber Coordinate Grid Matrix */}
+      <div
+        className="absolute inset-0 opacity-[0.06] pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(to right, #10b981 1px, transparent 1px),
+            linear-gradient(to bottom, #10b981 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      ></div>
 
-          <div className="flex items-center space-x-4 bg-white/10 backdrop-blur px-5 py-3 rounded-2xl border border-white/15">
-            <div className="text-center">
-              <span className="text-[11px] uppercase font-semibold text-indigo-200">Overall</span>
-              <p className="text-2xl font-black font-mono text-emerald-400">
-                {myAttendance.stats.percentage || student?.attendancePercentage || 0}%
-              </p>
-            </div>
-            <div className="h-8 w-px bg-white/20"></div>
-            <div className="text-center">
-              <span className="text-[11px] uppercase font-semibold text-indigo-200">Classes</span>
-              <p className="text-2xl font-black font-mono text-white">
-                {myAttendance.stats.totalPresent || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Device Binding Pill */}
-        <div className="mt-6 pt-4 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 text-xs text-indigo-200">
-          <div className="flex items-center space-x-1.5">
-            <Smartphone className="w-4 h-4 text-emerald-400" />
-            <span>Bound Device: <strong className="font-mono text-white">{deviceIdentifier}</strong></span>
-          </div>
-          <span className="text-emerald-300 flex items-center space-x-1">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Hardware Verified</span>
-          </span>
-        </div>
+      {/* Background Concentric Radar Rings */}
+      <div className="absolute top-44 left-1/2 -translate-x-1/2 pointer-events-none">
+        <div className="w-[360px] h-[360px] sm:w-[500px] sm:h-[500px] rounded-full border border-emerald-500/15 animate-pulse"></div>
+      </div>
+      <div className="absolute top-44 left-1/2 -translate-x-1/2 pointer-events-none">
+        <div className="w-[560px] h-[560px] sm:w-[800px] sm:h-[800px] rounded-full border border-dashed border-yellow-400/10"></div>
       </div>
 
-      {/* Warning Banner: Location Turned OFF */}
-      {(isLocationTurnedOff || locationWarning) && (
-        <div className="bg-rose-50 border-2 border-rose-500 rounded-3xl p-5 mb-6 shadow-lg shadow-rose-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start sm:items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-7 h-7 text-rose-600" />
-            </div>
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        {/* Student Profile Card (Obsidian HUD Glass) */}
+        <div className="backdrop-blur-2xl bg-[#09150e]/90 border border-emerald-500/40 ring-1 ring-yellow-400/30 rounded-3xl p-6 sm:p-8 text-white shadow-[0_0_50px_-10px_rgba(16,185,129,0.3)] mb-6 relative overflow-hidden">
+          {/* Top Neon Accent Line */}
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-yellow-400 to-emerald-500 shadow-[0_0_15px_#10b981]"></div>
+
+          {/* Background watermark */}
+          <Bus className="absolute -right-6 -bottom-6 w-44 h-44 text-emerald-400/5 pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-rose-700 bg-rose-100 px-2.5 py-0.5 rounded-full">
-                  ⚠️ Warning: Location Turned Off
+              <div className="flex items-center space-x-2 mb-2">
+                <span className="text-xs px-2.5 py-0.5 rounded-md font-mono font-black bg-yellow-400 text-slate-950 shadow-[0_0_12px_rgba(250,204,21,0.4)]">
+                  {student?.rollNumber || 'STUDENT'}
+                </span>
+                <span className="text-xs font-mono font-semibold text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                  {student?.year || '3rd Year'}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-rose-950 mt-1">
-                Your Device Location / GPS is Turned OFF
-              </h3>
-              <p className="text-xs text-rose-700 mt-0.5 max-w-xl">
-                {locationWarning || "Your phone's GPS or Location service is turned off. Bus attendance cannot be marked without live GPS verification. Please turn on Location in your device settings."}
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                {student?.name || user?.name}
+              </h1>
+              <p className="text-xs sm:text-sm font-mono text-emerald-400/80 mt-1">
+                {student?.department || 'Computer Science & Engineering'}
               </p>
             </div>
-          </div>
-          <button
-            onClick={handleTurnOnLocationClick}
-            disabled={isValidatingGps}
-            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-2xl text-xs flex items-center space-x-2 shadow-md shadow-rose-200 flex-shrink-0 transition cursor-pointer"
-          >
-            {isValidatingGps ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Turning ON & Validating...</span>
-              </>
-            ) : (
-              <>
-                <Navigation className="w-4 h-4" />
-                <span>Turn On Location & Validate</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
 
-      {/* Status Banner: Validating Live GPS */}
-      {isValidatingGps && (
-        <div className="bg-indigo-50 border-2 border-indigo-400 rounded-3xl p-5 mb-6 shadow-md shadow-indigo-100 flex items-center justify-between animate-pulse">
-          <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
-              <RefreshCw className="w-5 h-5 text-indigo-600 animate-spin" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-indigo-950">
-                Validating Live GPS Location for {activeTrip?.sessionName || 'Active Bus Trip'}...
-              </h4>
-              <p className="text-xs text-indigo-700 mt-0.5">
-                Acquiring high-accuracy satellite coordinates to confirm bus transit geofence.
-              </p>
-            </div>
-          </div>
-          <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-xs font-mono font-bold bg-white text-indigo-600 border border-indigo-200">
-            Validating...
-          </span>
-        </div>
-      )}
-
-      {/* Live Continuous GPS & Trip Authentication Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {/* Live Student GPS Card (Updated Every 1s, Never Locked) */}
-        <div className={`p-5 rounded-3xl border shadow-sm flex items-center justify-between ${
-          isLocationTurnedOff || locationWarning
-            ? 'bg-rose-50/60 border-rose-300'
-            : isValidatingGps
-            ? 'bg-indigo-50/60 border-indigo-300'
-            : 'bg-white border-slate-200/80'
-        }`}>
-          <div className="flex items-center space-x-3.5 truncate">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-              isLocationTurnedOff || locationWarning
-                ? 'bg-rose-100 text-rose-600'
-                : isValidatingGps
-                ? 'bg-indigo-100 text-indigo-600'
-                : 'bg-indigo-50 text-indigo-600'
-            }`}>
-              {isLocationTurnedOff || locationWarning ? (
-                <AlertTriangle className="w-6 h-6 text-rose-600" />
-              ) : isValidatingGps ? (
-                <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
-              ) : (
-                <Navigation className="w-6 h-6 text-indigo-600 animate-pulse" />
-              )}
-            </div>
-            <div className="truncate">
-              <div className="flex items-center space-x-2">
-                <span className={`text-xs font-bold uppercase tracking-wider ${
-                  isLocationTurnedOff || locationWarning ? 'text-rose-700' : 'text-indigo-600'
-                }`}>
-                  Live Student GPS
-                </span>
-                {!(isLocationTurnedOff || locationWarning) && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                )}
+            <div className="flex items-center space-x-4 bg-black/60 backdrop-blur-md px-5 py-3 rounded-2xl border border-emerald-500/30 shadow-inner">
+              <div className="text-center">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400/70">Overall</span>
+                <p className="text-2xl font-black font-mono text-emerald-400 drop-shadow-[0_0_12px_rgba(52,211,153,0.5)]">
+                  {myAttendance.stats.percentage || student?.attendancePercentage || 0}%
+                </p>
               </div>
-              <p className={`text-xs font-bold mt-0.5 truncate ${
-                isLocationTurnedOff || locationWarning ? 'text-rose-900' : 'text-slate-800'
-              }`}>
-                {isLocationTurnedOff || locationWarning
-                  ? '⚠️ Device Location is OFF'
-                  : isValidatingGps
-                  ? 'Validating Live GPS...'
-                  : (studentGpsStatus || 'Live GPS Active (Updated Every 1s)')}
-              </p>
-              <p className={`text-[11px] font-mono mt-0.5 truncate ${
-                isLocationTurnedOff || locationWarning ? 'text-rose-700' : 'text-slate-500'
-              }`}>
-                {isLocationTurnedOff || locationWarning
-                  ? 'Tap button to turn ON location'
-                  : studentCoords?.latitude
-                  ? `${studentCoords.latitude.toFixed(5)}, ${studentCoords.longitude.toFixed(5)}${studentCoords.accuracy ? ` (±${Math.round(studentCoords.accuracy)}m)` : ''}`
-                  : 'Streaming high-accuracy 1s GPS...'}
-              </p>
+              <div className="h-8 w-px bg-emerald-500/20"></div>
+              <div className="text-center">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-yellow-400/70">Classes</span>
+                <p className="text-2xl font-black font-mono text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.4)]">
+                  {myAttendance.stats.totalPresent || 0}
+                </p>
+              </div>
             </div>
           </div>
-          {isLocationTurnedOff || locationWarning ? (
+
+          {/* Device Binding Pill */}
+          <div className="mt-6 pt-4 border-t border-emerald-500/20 flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-emerald-400/80">
+            <div className="flex items-center space-x-1.5">
+              <Smartphone className="w-4 h-4 text-emerald-400" />
+              <span>Bound Device: <strong className="text-yellow-300 font-bold">{deviceIdentifier}</strong></span>
+            </div>
+            <span className="text-emerald-300 flex items-center space-x-1">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Hardware Verified</span>
+            </span>
+          </div>
+        </div>
+
+        {/* Warning Banner: Location Turned OFF */}
+        {(isLocationTurnedOff || locationWarning) && (
+          <div className="bg-rose-950/70 border-2 border-rose-500/80 rounded-3xl p-5 mb-6 shadow-[0_0_30px_rgba(244,63,94,0.25)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 backdrop-blur-md">
+            <div className="flex items-start sm:items-center space-x-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-rose-900/60 border border-rose-500/40 text-rose-400 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-7 h-7 text-rose-400" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-mono font-black uppercase tracking-wider text-rose-300 bg-rose-900/80 border border-rose-500/50 px-2.5 py-0.5 rounded-full">
+                    ⚠️ ALERT // LOCATION OFF
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white mt-1">
+                  Device Location / GPS is Turned OFF
+                </h3>
+                <p className="text-xs font-mono text-rose-300/80 mt-0.5 max-w-xl">
+                  {locationWarning || "Your phone's GPS or Location service is turned off. Bus attendance cannot be marked without live GPS verification."}
+                </p>
+              </div>
+            </div>
             <button
               onClick={handleTurnOnLocationClick}
               disabled={isValidatingGps}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-600 hover:bg-rose-700 text-white flex-shrink-0 transition shadow-sm cursor-pointer"
+              className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-mono font-bold rounded-2xl text-xs flex items-center space-x-2 shadow-lg shadow-rose-600/30 flex-shrink-0 transition cursor-pointer"
             >
-              Turn ON
+              {isValidatingGps ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Validating GPS...</span>
+                </>
+              ) : (
+                <>
+                  <Navigation className="w-4 h-4" />
+                  <span>Turn On Location</span>
+                </>
+              )}
             </button>
-          ) : (
-            <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">
-              Never Locked
-            </span>
-          )}
-        </div>
-
-        {/* Per-Trip Authentication Status */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm flex items-center justify-between">
-          <div className="flex items-center space-x-3.5 truncate">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-              activeTrip && !isTripAuthenticated ? 'bg-amber-100 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-            }`}>
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div className="truncate">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Trip Authentication</span>
-              <p className="text-xs font-bold text-slate-800 mt-0.5 truncate">
-                {activeTrip
-                  ? (isTripAuthenticated ? `${activeTrip.sessionName || 'Active Trip'} Authenticated` : 'Re-login Required')
-                  : 'Ready for Departure'}
-              </p>
-              <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-                {activeTrip
-                  ? (isTripAuthenticated ? 'Valid session for active trip' : 'Log in fresh for this active trip')
-                  : 'Per-trip login required on trip start'}
-              </p>
-            </div>
           </div>
-          {activeTrip && !isTripAuthenticated ? (
-            <Link
-              to="/login"
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl transition shadow-sm flex-shrink-0"
-            >
-              Log In For Trip
-            </Link>
-          ) : (
-            <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-emerald-50 text-emerald-700 border border-emerald-100 flex-shrink-0">
-              Verified
-            </span>
-          )}
-        </div>
-      </div>
+        )}
 
-      {/* Session / Active Trip Status Banner & Call to Action */}
-      <div className="mb-6">
-        {activeTrip ? (
-          markedForActiveTrip ? (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        {/* Status Banner: Validating Live GPS */}
+        {isValidatingGps && (
+          <div className="bg-[#09150e]/90 border-2 border-emerald-400/60 rounded-3xl p-5 mb-6 shadow-[0_0_30px_rgba(16,185,129,0.25)] flex items-center justify-between animate-pulse">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white font-mono">
+                  Validating Live GPS Telemetry for {activeTrip?.sessionName || 'Active Bus Trip'}...
+                </h4>
+                <p className="text-xs font-mono text-emerald-400/80 mt-0.5">
+                  Acquiring high-accuracy satellite coordinates to confirm bus transit geofence.
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40">
+              STREAMING...
+            </span>
+          </div>
+        )}
+
+        {/* Live Continuous GPS & Trip Authentication Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          {/* Live Student GPS Card */}
+          <div className={`p-5 rounded-3xl border shadow-[0_0_30px_-5px_rgba(16,185,129,0.15)] backdrop-blur-xl flex items-center justify-between ${
+            isLocationTurnedOff || locationWarning
+              ? 'bg-rose-950/40 border-rose-500/40'
+              : isValidatingGps
+              ? 'bg-emerald-950/40 border-emerald-400/50'
+              : 'bg-[#09150e]/85 border-emerald-500/30'
+          }`}>
+            <div className="flex items-center space-x-3.5 truncate">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border ${
+                isLocationTurnedOff || locationWarning
+                  ? 'bg-rose-900/60 border-rose-500/50 text-rose-400'
+                  : 'bg-emerald-950/70 border-emerald-500/40 text-emerald-400'
+              }`}>
+                {isLocationTurnedOff || locationWarning ? (
+                  <AlertTriangle className="w-6 h-6 text-rose-400" />
+                ) : isValidatingGps ? (
+                  <RefreshCw className="w-6 h-6 text-emerald-400 animate-spin" />
+                ) : (
+                  <Navigation className="w-6 h-6 text-emerald-400 animate-pulse" />
+                )}
+              </div>
+              <div className="truncate">
+                <div className="flex items-center space-x-2">
+                  <span className={`text-xs font-mono font-bold uppercase tracking-wider ${
+                    isLocationTurnedOff || locationWarning ? 'text-rose-400' : 'text-emerald-400'
+                  }`}>
+                    Live Student GPS
+                  </span>
+                  {!(isLocationTurnedOff || locationWarning) && (
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  )}
+                </div>
+                <p className={`text-xs font-mono font-bold mt-0.5 truncate ${
+                  isLocationTurnedOff || locationWarning ? 'text-rose-300' : 'text-white'
+                }`}>
+                  {isLocationTurnedOff || locationWarning
+                    ? '⚠️ Location is OFF'
+                    : isValidatingGps
+                    ? 'Validating Live GPS...'
+                    : (studentGpsStatus || 'Live GPS Active (1s Stream)')}
+                </p>
+                <p className={`text-[11px] font-mono mt-0.5 truncate ${
+                  isLocationTurnedOff || locationWarning ? 'text-rose-400' : 'text-emerald-400/70'
+                }`}>
+                  {isLocationTurnedOff || locationWarning
+                    ? 'Tap button to turn ON'
+                    : studentCoords?.latitude
+                    ? `${studentCoords.latitude.toFixed(5)}, ${studentCoords.longitude.toFixed(5)}${studentCoords.accuracy ? ` (±${Math.round(studentCoords.accuracy)}m)` : ''}`
+                    : 'Streaming high-accuracy 1s GPS...'}
+                </p>
+              </div>
+            </div>
+            {isLocationTurnedOff || locationWarning ? (
+              <button
+                onClick={handleTurnOnLocationClick}
+                disabled={isValidatingGps}
+                className="px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-rose-600 hover:bg-rose-500 text-white flex-shrink-0 transition shadow-sm cursor-pointer"
+              >
+                Turn ON
+              </button>
+            ) : (
+              <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 flex-shrink-0">
+                NEVER LOCKED
+              </span>
+            )}
+          </div>
+
+          {/* Per-Trip Authentication Status */}
+          <div className="backdrop-blur-xl bg-[#09150e]/85 p-5 rounded-3xl border border-emerald-500/30 shadow-[0_0_30px_-5px_rgba(16,185,129,0.15)] flex items-center justify-between">
+            <div className="flex items-center space-x-3.5 truncate">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border ${
+                activeTrip && !isTripAuthenticated
+                  ? 'bg-yellow-400/10 border-yellow-400/40 text-yellow-400'
+                  : 'bg-emerald-950/70 border-emerald-500/40 text-emerald-400'
+              }`}>
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="truncate">
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400/70">
+                  Trip Authentication
+                </span>
+                <p className="text-xs font-mono font-bold text-white mt-0.5 truncate">
+                  {activeTrip
+                    ? (isTripAuthenticated ? `${activeTrip.sessionName || 'Active Trip'} Authenticated` : 'Re-login Required')
+                    : 'Ready for Departure'}
+                </p>
+                <p className="text-[11px] font-mono text-emerald-400/60 mt-0.5 truncate">
+                  {activeTrip
+                    ? (isTripAuthenticated ? 'Valid session for active trip' : 'Log in fresh for this active trip')
+                    : 'Per-trip login required on trip start'}
+                </p>
+              </div>
+            </div>
+            {activeTrip && !isTripAuthenticated ? (
+              <Link
+                to="/login"
+                className="px-3 py-1.5 bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-mono font-black rounded-xl transition shadow-[0_0_15px_rgba(250,204,21,0.4)] flex-shrink-0"
+              >
+                Log In
+              </Link>
+            ) : (
+              <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-yellow-400/10 text-yellow-300 border border-yellow-400/30 flex-shrink-0">
+                VERIFIED
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Session / Active Trip Status Banner & Call to Action */}
+        <div className="mb-6">
+          {activeTrip ? (
+            markedForActiveTrip ? (
+              <div className="backdrop-blur-2xl bg-[#08180e]/90 border border-emerald-400/50 shadow-[0_0_30px_rgba(16,185,129,0.25)] rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-950/80 border border-emerald-400/40 text-emerald-400 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    <CheckCircle2 className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white font-mono">
+                      Attendance Marked for {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip
+                    </h3>
+                    <p className="text-xs font-mono text-emerald-400/80 mt-0.5">
+                      Verified on {activeTrip.busId?.busNumber || 'BUS-09'} • Distance: {activeTripRecord?.distanceMeters || 0}m
+                    </p>
+                  </div>
+                </div>
+                <StatusBadge status="PRESENT" />
+              </div>
+            ) : !isTripAuthenticated ? (
+              <div className="backdrop-blur-2xl bg-[#141208]/90 border-2 border-yellow-400/60 rounded-3xl p-6 shadow-[0_0_30px_rgba(250,204,21,0.25)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center space-x-2 text-yellow-400 mb-1">
+                    <AlertCircle className="w-4 h-4" />
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider">
+                      {activeTrip.sessionName || 'Trip'} Active — Authentication Required
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-bold text-white font-mono">
+                    Please Log In for This Trip
+                  </h3>
+                  <p className="text-xs font-mono text-yellow-200/80 mt-0.5">
+                    As required by bus security policy, you must log in fresh for each trip before scanning attendance.
+                  </p>
+                </div>
+
+                <Link
+                  to="/login"
+                  className="px-6 py-3 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-mono font-black uppercase rounded-2xl text-sm transition shadow-[0_0_20px_rgba(250,204,21,0.4)] flex items-center justify-center space-x-2 flex-shrink-0 cursor-pointer"
+                >
+                  <span>Log In For Trip</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            ) : (
+              <div className="backdrop-blur-2xl bg-gradient-to-r from-[#09150e]/95 via-[#0e2518]/95 to-[#09150e]/95 border-2 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.35)] ring-1 ring-yellow-400/40 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center space-x-2 text-emerald-400 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span className="text-xs font-mono font-bold uppercase tracking-wider">
+                      {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip In Progress
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white font-mono">
+                    {activeTrip.sessionName || 'Trip'} Attendance is Open!
+                  </h3>
+                  <p className="text-xs font-mono text-emerald-400/80 mt-0.5">
+                    Scan the dynamic QR displayed on the bus dashboard to mark your presence.
+                  </p>
+                </div>
+
+                <Link
+                  to="/student/scan"
+                  className="px-6 py-3.5 bg-gradient-to-r from-emerald-400 via-green-300 to-yellow-400 hover:from-emerald-300 hover:to-yellow-300 text-slate-950 font-mono font-black uppercase tracking-wider rounded-2xl text-sm transition shadow-[0_0_25px_rgba(16,185,129,0.45)] hover:shadow-[0_0_35px_rgba(250,204,21,0.6)] flex items-center justify-center space-x-2 cursor-pointer active:scale-95"
+                >
+                  <QrCode className="w-5 h-5 text-slate-950" />
+                  <span>Scan QR Code</span>
+                  <ArrowRight className="w-4 h-4 text-slate-950" />
+                </Link>
+              </div>
+            )
+          ) : isPresentToday ? (
+            <div className="backdrop-blur-xl bg-[#09150e]/80 border border-emerald-500/20 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="w-7 h-7" />
+                <div className="w-12 h-12 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-emerald-900">
-                    Attendance Marked for {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip
-                  </h3>
-                  <p className="text-xs text-emerald-700 mt-0.5">
-                    Verified on {activeTrip.busId?.busNumber || 'BUS-09'} • Distance: {activeTripRecord?.distanceMeters || 0}m
+                  <h3 className="text-base font-bold text-white font-mono">Trip Ended • Attendance Closed</h3>
+                  <p className="text-xs font-mono text-emerald-400/70 mt-0.5">
+                    Last marked at {new Date(todayRecord.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Waiting for next bus trip to start.
                   </p>
                 </div>
               </div>
-              <StatusBadge status="PRESENT" />
-            </div>
-          ) : !isTripAuthenticated ? (
-            <div className="bg-amber-50 border-2 border-amber-400 rounded-3xl p-6 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center space-x-2 text-amber-700 mb-1">
-                  <AlertCircle className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase tracking-wider">
-                    {activeTrip.sessionName || 'Trip'} Active — Authentication Required
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-amber-950">
-                  Please Log In for This Trip
-                </h3>
-                <p className="text-xs text-amber-800 mt-0.5">
-                  As required by bus security policy, you must log in fresh for each trip before scanning attendance.
-                </p>
-              </div>
-
-              <Link
-                to="/login"
-                className="px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-amber-200 flex items-center justify-center space-x-2 flex-shrink-0"
-              >
-                <span>Log In For Trip</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-bold uppercase bg-emerald-950 text-emerald-300 border border-emerald-500/30">
+                TRIP COMPLETED
+              </span>
             </div>
           ) : (
-            <div className="bg-white border-2 border-indigo-500 rounded-3xl p-6 shadow-lg shadow-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center space-x-2 text-indigo-600 mb-1">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
-                  <span className="text-xs font-bold uppercase tracking-wider">
-                    {activeTrip.session === 'MORNING' ? '🌅 Morning' : '🌆 Evening'} Trip In Progress
-                  </span>
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">
-                  {activeTrip.sessionName || 'Trip'} Attendance is Open!
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Scan the dynamic QR displayed on the bus dashboard to mark your presence.
-                </p>
-              </div>
-
-              <Link
-                to="/student/scan"
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-indigo-200 flex items-center justify-center space-x-2"
-              >
-                <QrCode className="w-5 h-5" />
-                <span>Scan QR Code</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+            <div className="backdrop-blur-xl bg-[#09150e]/80 rounded-3xl border border-emerald-500/20 p-6 text-center text-emerald-400/70 font-mono">
+              <Clock className="w-8 h-8 mx-auto text-emerald-400/40 mb-2" />
+              <h3 className="text-sm font-bold text-white">Attendance is Currently Closed</h3>
+              <p className="text-xs text-emerald-400/60 mt-0.5">
+                The driver has not started a bus trip yet or the trip has ended. Check back when boarding the bus.
+              </p>
             </div>
-          )
-        ) : isPresentToday ? (
-          <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0">
-                <Clock className="w-7 h-7" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800">Trip Ended • Attendance Closed</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Last marked at {new Date(todayRecord.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Waiting for next bus trip to start.
-                </p>
-              </div>
-            </div>
-            <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-slate-200 text-slate-700">
-              Trip Completed
-            </span>
-          </div>
-        ) : (
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 text-center text-slate-500">
-            <Clock className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-            <h3 className="text-sm font-bold text-slate-800">Attendance is Currently Closed</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              The driver has not started a bus trip yet or the trip has ended. Check back when boarding the bus.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Attendance History Section */}
-      <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">My Attendance History</h3>
-            <p className="text-xs text-slate-500">Personal boarding and verification logs</p>
-          </div>
-          <button
-            onClick={fetchStudentData}
-            className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg"
-            title="Refresh"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-
-        <div className="divide-y divide-slate-100">
-          {myAttendance.history.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-xs">
-              No attendance records recorded yet.
-            </div>
-          ) : (
-            myAttendance.history.map((rec) => (
-              <div key={rec._id} className="p-4 sm:px-6 hover:bg-slate-50/80 transition flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-slate-800">
-                      {new Date(rec.markedAt).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </span>
-                    <span className="text-xs text-slate-400 font-mono">
-                      at {new Date(rec.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    Trip: <span className="font-mono">{rec.tripId?.tripId || 'TRIP'}</span> • Dist from bus: {rec.distanceMeters || 0}m
-                  </div>
-                </div>
-
-                <StatusBadge status={rec.status} />
-              </div>
-            ))
           )}
         </div>
-      </div>
 
-      {/* Location Settings & Turn On Guide Modal */}
-      <LocationSettingsModal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        onValidate={validateTripLocation}
-        isValidating={isValidatingGps}
-        validationError={locationWarning}
-      />
+        {/* Attendance History Section (Obsidian Telemetry Logs) */}
+        <div className="backdrop-blur-xl bg-[#09150e]/90 rounded-3xl border border-emerald-500/30 shadow-[0_0_40px_-10px_rgba(16,185,129,0.25)] overflow-hidden">
+          <div className="px-6 py-5 border-b border-emerald-500/20 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-white font-mono">My Attendance History</h3>
+              <p className="text-xs font-mono text-emerald-400/70">// Personal boarding and verification telemetry</p>
+            </div>
+            <button
+              onClick={fetchStudentData}
+              className="p-1.5 text-emerald-400 hover:text-yellow-400 hover:bg-emerald-950/60 rounded-lg transition cursor-pointer"
+              title="Refresh Telemetry"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <div className="divide-y divide-emerald-500/15">
+            {myAttendance.history.length === 0 ? (
+              <div className="py-12 text-center text-emerald-400/50 text-xs font-mono">
+                No attendance telemetry records logged yet.
+              </div>
+            ) : (
+              myAttendance.history.map((rec) => (
+                <div key={rec._id} className="p-4 sm:px-6 hover:bg-emerald-950/30 transition flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xs font-mono font-bold text-white">
+                        {new Date(rec.markedAt).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </span>
+                      <span className="text-xs text-emerald-400/70 font-mono">
+                        at {new Date(rec.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-emerald-400/60 mt-0.5">
+                      Trip: <span className="text-yellow-400 font-bold">{rec.tripId?.tripId || 'TRIP'}</span> • Dist from bus: {rec.distanceMeters || 0}m
+                    </div>
+                  </div>
+
+                  <StatusBadge status={rec.status} />
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Location Settings & Turn On Guide Modal */}
+        <LocationSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          onValidate={validateTripLocation}
+          isValidating={isValidatingGps}
+          validationError={locationWarning}
+        />
+      </div>
     </div>
   );
 };
+
