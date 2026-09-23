@@ -59,7 +59,18 @@ const GPS_RANGE_OPTIONS = [
 export const DriverDashboard = () => {
   const { user } = useAuth();
   const [activeTrip, setActiveTrip] = useState(null);
-  const [stats, setStats] = useState({ totalStudents: 55, presentCount: 0, absentCount: 55 });
+  const [stats, setStats] = useState({
+    totalStudents: 55,
+    presentCount: 0,
+    absentCount: 55,
+    totalBoys: 21,
+    totalGirls: 34,
+    boysPresent: 0,
+    girlsPresent: 0,
+    boysAbsent: 21,
+    girlsAbsent: 34,
+  });
+  const [genderFilter, setGenderFilter] = useState('ALL'); // 'ALL' | 'BOYS' | 'GIRLS'
   const [attendees, setAttendees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -89,7 +100,9 @@ export const DriverDashboard = () => {
           if (res.data.trip.geofenceRadius) {
             setSelectedGpsRange(res.data.trip.geofenceRadius);
           }
-          setStats(res.data.stats || { totalStudents: 55, presentCount: 0, absentCount: 55 });
+          if (res.data.stats) {
+            setStats((prev) => ({ ...prev, ...res.data.stats }));
+          }
           // Also fetch attendees
           fetchAttendees();
         } else {
@@ -108,7 +121,10 @@ export const DriverDashboard = () => {
     try {
       const res = await axiosClient.get('/api/attendance/active-trip');
       if (res.data.success) {
-        setAttendees(res.data.records);
+        setAttendees(res.data.records || []);
+        if (res.data.stats) {
+          setStats((prev) => ({ ...prev, ...res.data.stats }));
+        }
       }
     } catch (err) {
       console.error('Error fetching attendees:', err);
@@ -364,7 +380,17 @@ export const DriverDashboard = () => {
         if (res.data.trip.geofenceRadius) {
           setSelectedGpsRange(res.data.trip.geofenceRadius);
         }
-        setStats({ totalStudents: 55, presentCount: 0, absentCount: 55 });
+        setStats({
+          totalStudents: 55,
+          presentCount: 0,
+          absentCount: 55,
+          totalBoys: 21,
+          totalGirls: 34,
+          boysPresent: 0,
+          girlsPresent: 0,
+          boysAbsent: 21,
+          girlsAbsent: 34,
+        });
         setAttendees([]);
 
         // Immediately update with live location so starting coordinates are never locked
@@ -422,10 +448,28 @@ export const DriverDashboard = () => {
       if (res.data.success) {
         setActiveTrip(null);
         setAttendees([]);
-        setStats({ totalStudents: 55, presentCount: 0, absentCount: 55 });
+        setStats({
+          totalStudents: 55,
+          presentCount: 0,
+          absentCount: 55,
+          totalBoys: 21,
+          totalGirls: 34,
+          boysPresent: 0,
+          girlsPresent: 0,
+          boysAbsent: 21,
+          girlsAbsent: 34,
+        });
         // Auto toggle next session
         setSelectedSession((prev) => (prev === 'MORNING' ? 'EVENING' : 'MORNING'));
-        alert(`Trip Completed!\n\nAttendance is now CLOSED.\nPresent: ${res.data.summary.presentCount}\nAbsent: ${res.data.summary.absentCount}`);
+        const s = res.data.summary || {};
+        alert(
+          `Trip Completed!\n\n` +
+          `Attendance is now CLOSED.\n` +
+          `Total Boarded: ${s.presentCount || 0} / ${s.totalStudents || 55}\n` +
+          `👦 Boys Present: ${s.boysPresent || 0} / ${s.totalBoys || 21}\n` +
+          `👧 Girls Present: ${s.girlsPresent || 0} / ${s.totalGirls || 34}\n` +
+          `Total Absent: ${s.absentCount || 0}`
+        );
         fetchActiveTrip();
       }
     } catch (err) {
@@ -434,6 +478,23 @@ export const DriverDashboard = () => {
       setActionLoading(false);
     }
   };
+
+  // Derive real-time boy and girl counts directly from attendees array or stats
+  const boysInAttendees = attendees.filter((a) => a.studentId?.gender === 'Male').length;
+  const girlsInAttendees = attendees.filter((a) => a.studentId?.gender === 'Female').length;
+
+  const boysPresent = stats.boysPresent !== undefined && stats.boysPresent >= boysInAttendees ? stats.boysPresent : boysInAttendees;
+  const girlsPresent = stats.girlsPresent !== undefined && stats.girlsPresent >= girlsInAttendees ? stats.girlsPresent : girlsInAttendees;
+  const totalBoys = stats.totalBoys || 21;
+  const totalGirls = stats.totalGirls || 34;
+  const boysAbsent = Math.max(0, totalBoys - boysPresent);
+  const girlsAbsent = Math.max(0, totalGirls - girlsPresent);
+
+  const filteredAttendees = attendees.filter((rec) => {
+    if (genderFilter === 'BOYS') return rec.studentId?.gender === 'Male';
+    if (genderFilter === 'GIRLS') return rec.studentId?.gender === 'Female';
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -544,80 +605,147 @@ export const DriverDashboard = () => {
       )}
 
       {/* Real-time Status Card & Counters */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider">Trip Status</span>
-            <Clock className="w-4 h-4 text-indigo-600" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5 mb-8">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-slate-500 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Trip Status</span>
+              <Clock className="w-4 h-4 text-indigo-600" />
+            </div>
+            <p className="text-base sm:text-lg font-bold">
+              {activeTrip ? <StatusBadge status="ACTIVE" /> : <span className="text-slate-400">NOT STARTED</span>}
+            </p>
           </div>
-          <p className="text-lg font-bold">
-            {activeTrip ? <StatusBadge status="ACTIVE" /> : <span className="text-slate-400">NOT STARTED</span>}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-[11px] text-slate-500 mt-2">
             {activeTrip ? `Started ${new Date(activeTrip.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Ready to depart'}
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-emerald-600 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider">Present Count</span>
-            <UserCheck className="w-4 h-4" />
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-emerald-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-emerald-600 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Present</span>
+              <UserCheck className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="flex items-baseline">
+              <span className="text-3xl font-extrabold text-emerald-600 font-mono">
+                {stats.presentCount}
+              </span>
+              <span className="text-xs font-semibold text-slate-400 font-mono ml-1">
+                /{stats.totalStudents || 55}
+              </span>
+            </div>
           </div>
-          <p className="text-3xl font-extrabold text-emerald-600 font-mono">
-            {stats.presentCount}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Boarded & verified</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-rose-600 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider">Absent Count</span>
-            <UserX className="w-4 h-4" />
-          </div>
-          <p className="text-3xl font-extrabold text-rose-600 font-mono">
-            {stats.absentCount}
-          </p>
-          <p className="text-xs text-slate-500 mt-1">Remaining to board</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
-          <div className="flex items-center justify-between text-indigo-600 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider">Live Bus GPS</span>
-            <Navigation className={`w-4 h-4 text-indigo-600 ${activeTrip ? 'animate-pulse' : ''}`} />
-          </div>
-          <p className="text-xs font-bold text-slate-800 truncate">
-            {locationStatus}
-          </p>
-          <p className="text-[11px] text-slate-500 mt-1 font-mono">
-            {currentCoords
-              ? `${currentCoords.latitude.toFixed(5)}, ${currentCoords.longitude.toFixed(5)}${currentCoords.accuracy ? ` (±${Math.round(currentCoords.accuracy)}m)` : ''}`
-              : (activeTrip ? 'Auto-updating every second' : 'Standby')}
+          <p className="text-[11px] text-emerald-700 font-medium mt-2">
+            {stats.totalStudents ? Math.round((stats.presentCount / stats.totalStudents) * 100) : 0}% boarded
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-blue-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-blue-600 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider flex items-center space-x-1">
+                <span>👦</span>
+                <span>Boys Present</span>
+              </span>
+              <Users className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex items-baseline">
+              <span className="text-3xl font-extrabold text-blue-600 font-mono">
+                {boysPresent}
+              </span>
+              <span className="text-xs font-semibold text-slate-400 font-mono ml-1">
+                /{totalBoys}
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2 flex items-center justify-between">
+            <span className="text-rose-500 font-semibold">{boysAbsent} absent</span>
+            <span className="text-blue-600 font-bold">{totalBoys > 0 ? Math.round((boysPresent / totalBoys) * 100) : 0}%</span>
+          </p>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-pink-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-pink-600 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider flex items-center space-x-1">
+                <span>👧</span>
+                <span>Girls Present</span>
+              </span>
+              <Users className="w-4 h-4 text-pink-600" />
+            </div>
+            <div className="flex items-baseline">
+              <span className="text-3xl font-extrabold text-pink-600 font-mono">
+                {girlsPresent}
+              </span>
+              <span className="text-xs font-semibold text-slate-400 font-mono ml-1">
+                /{totalGirls}
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2 flex items-center justify-between">
+            <span className="text-rose-500 font-semibold">{girlsAbsent} absent</span>
+            <span className="text-pink-600 font-bold">{totalGirls > 0 ? Math.round((girlsPresent / totalGirls) * 100) : 0}%</span>
+          </p>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-rose-100 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-rose-600 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">Total Absent</span>
+              <UserX className="w-4 h-4 text-rose-600" />
+            </div>
+            <div className="flex items-baseline">
+              <span className="text-3xl font-extrabold text-rose-600 font-mono">
+                {stats.absentCount}
+              </span>
+              <span className="text-xs font-semibold text-slate-400 font-mono ml-1">
+                /{stats.totalStudents || 55}
+              </span>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">Remaining to board</p>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-indigo-600 mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider">GPS Range</span>
+              <span className="text-[11px] font-bold uppercase tracking-wider">Live Bus GPS</span>
+              <Navigation className={`w-4 h-4 text-indigo-600 ${activeTrip ? 'animate-pulse' : ''}`} />
+            </div>
+            <p className="text-xs font-bold text-slate-800 truncate">
+              {locationStatus}
+            </p>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2 font-mono truncate">
+            {currentCoords
+              ? `${currentCoords.latitude.toFixed(4)}, ${currentCoords.longitude.toFixed(4)}${currentCoords.accuracy ? ` (±${Math.round(currentCoords.accuracy)}m)` : ''}`
+              : (activeTrip ? 'Tracking active' : 'Standby')}
+          </p>
+        </div>
+
+        <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-indigo-600 mb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider">GPS Range</span>
               <ShieldCheck className="w-4 h-4 text-indigo-600" />
             </div>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-base sm:text-lg font-bold text-slate-900">
               {activeTrip?.geofenceRadius
                 ? (activeTrip.geofenceRadius >= 1000 ? `${activeTrip.geofenceRadius / 1000} km` : `${activeTrip.geofenceRadius} m`)
                 : (selectedGpsRange >= 1000 ? `${selectedGpsRange / 1000} km` : `${selectedGpsRange} m`)}
             </p>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {activeTrip ? 'Active boundary' : 'Selected boundary'}
-            </p>
           </div>
-          {activeTrip && (
+          {activeTrip ? (
             <button
               onClick={() => setIsAdjustRangeModalOpen(true)}
               className="mt-2 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 self-start"
             >
               <Sliders className="w-3 h-3" />
-              <span>Change Range</span>
+              <span>Change</span>
             </button>
+          ) : (
+            <p className="text-[11px] text-slate-400 mt-2">Selected boundary</p>
           )}
         </div>
       </div>
@@ -678,29 +806,79 @@ export const DriverDashboard = () => {
         {/* Live Passenger List Column */}
         <div className="lg:col-span-6">
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden h-full flex flex-col">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Live Passengers ({stats.presentCount}/{stats.totalStudents || 55})</h3>
-                <p className="text-xs text-slate-500">Students scanned on this active trip</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900">
+                    Live Passengers ({stats.presentCount}/{stats.totalStudents || 55})
+                  </h3>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                    👦 Boys: {boysPresent}/{totalBoys}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                    👧 Girls: {girlsPresent}/{totalGirls}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">Students scanned on this active trip</p>
               </div>
-              <button
-                onClick={fetchAttendees}
-                className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg"
-                title="Refresh Attendees"
-              >
-                <RefreshCw className="w-4 h-4" />
-              </button>
+
+              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setGenderFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg transition text-[11px] ${
+                    genderFilter === 'ALL'
+                      ? 'bg-white text-slate-900 shadow-sm font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All ({attendees.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenderFilter('BOYS')}
+                  className={`px-2.5 py-1 rounded-lg transition text-[11px] ${
+                    genderFilter === 'BOYS'
+                      ? 'bg-blue-600 text-white shadow-sm font-bold'
+                      : 'text-blue-700 hover:text-blue-900'
+                  }`}
+                >
+                  👦 Boys ({boysInAttendees})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenderFilter('GIRLS')}
+                  className={`px-2.5 py-1 rounded-lg transition text-[11px] ${
+                    genderFilter === 'GIRLS'
+                      ? 'bg-pink-600 text-white shadow-sm font-bold'
+                      : 'text-pink-700 hover:text-pink-900'
+                  }`}
+                >
+                  👧 Girls ({girlsInAttendees})
+                </button>
+                <button
+                  onClick={fetchAttendees}
+                  className="p-1 text-slate-400 hover:text-indigo-600 rounded-lg ml-0.5"
+                  title="Refresh Attendees"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto max-h-[480px] divide-y divide-slate-100 p-2">
-              {attendees.length === 0 ? (
+              {filteredAttendees.length === 0 ? (
                 <div className="py-16 text-center text-slate-400">
                   <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p className="text-xs font-semibold">No students have marked attendance yet.</p>
+                  <p className="text-xs font-semibold">
+                    {genderFilter === 'ALL'
+                      ? 'No students have marked attendance yet.'
+                      : `No ${genderFilter === 'BOYS' ? 'boys' : 'girls'} have marked attendance yet.`}
+                  </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">Scanned records appear here instantly.</p>
                 </div>
               ) : (
-                attendees.map((rec, idx) => (
+                filteredAttendees.map((rec, idx) => (
                   <div key={rec._id} className="p-3 hover:bg-slate-50 rounded-xl transition flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 font-mono text-xs font-bold flex items-center justify-center">
@@ -714,6 +892,17 @@ export const DriverDashboard = () => {
                           <span className="font-mono text-[11px] text-indigo-600 font-bold">
                             ({rec.studentId?.rollNumber})
                           </span>
+                          {rec.studentId?.gender === 'Female' ? (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-pink-50 text-pink-700 border border-pink-200 inline-flex items-center space-x-0.5">
+                              <span>👧</span>
+                              <span>Girl</span>
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 inline-flex items-center space-x-0.5">
+                              <span>👦</span>
+                              <span>Boy</span>
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-400">
                           {rec.studentId?.department} • Dist: {rec.distanceMeters || 0}m

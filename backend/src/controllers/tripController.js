@@ -131,17 +131,29 @@ export const stopTrip = async (req, res) => {
     await QRCode.updateMany({ tripId: activeTrip._id }, { isActive: false });
 
     // Calculate attendance numbers for this trip
-    const presentCount = await Attendance.countDocuments({
-      tripId: activeTrip._id,
-      status: { $in: ['PRESENT', 'LATE'] },
-    });
+    const presentRecords = await Attendance.find({ tripId: activeTrip._id, status: { $in: ['PRESENT', 'LATE'] } }).populate('studentId', 'gender');
+    const presentCount = presentRecords.length;
     const totalStudents = await Student.countDocuments({ accountStatus: 'ACTIVE' });
-    const absentCount = Math.max(0, totalStudents - presentCount);
+    const totalBoys = await Student.countDocuments({ accountStatus: 'ACTIVE', gender: 'Male' });
+    const totalGirls = await Student.countDocuments({ accountStatus: 'ACTIVE', gender: 'Female' });
+
+    let boysPresent = 0;
+    let girlsPresent = 0;
+    for (const r of presentRecords) {
+      if (r.studentId?.gender === 'Female') girlsPresent++;
+      else if (r.studentId?.gender === 'Male') boysPresent++;
+    }
+
+    const effectiveTotal = totalStudents || 55;
+    const effectiveBoys = totalBoys || 21;
+    const effectiveGirls = totalGirls || 34;
+    const absentCount = Math.max(0, effectiveTotal - presentCount);
+    const boysAbsent = Math.max(0, effectiveBoys - boysPresent);
+    const girlsAbsent = Math.max(0, effectiveGirls - girlsPresent);
 
     // Update attendance statistics for all active students
     // 1. Get all students who were present on this trip
-    const presentRecords = await Attendance.find({ tripId: activeTrip._id, status: { $in: ['PRESENT', 'LATE'] } });
-    const presentStudentIds = new Set(presentRecords.map((r) => r.studentId.toString()));
+    const presentStudentIds = new Set(presentRecords.map((r) => r.studentId?._id?.toString() || r.studentId?.toString()));
 
     const allStudents = await Student.find({ accountStatus: 'ACTIVE' });
     for (const student of allStudents) {
@@ -163,7 +175,11 @@ export const stopTrip = async (req, res) => {
         tripId: activeTrip.tripId,
         presentCount,
         absentCount,
-        totalStudents,
+        totalStudents: effectiveTotal,
+        boysPresent,
+        girlsPresent,
+        boysAbsent,
+        girlsAbsent,
       },
       ipAddress: req.ip || '',
       status: 'SUCCESS',
@@ -178,7 +194,13 @@ export const stopTrip = async (req, res) => {
         endTime: activeTrip.endTime,
         presentCount,
         absentCount,
-        totalStudents,
+        totalStudents: effectiveTotal,
+        totalBoys: effectiveBoys,
+        totalGirls: effectiveGirls,
+        boysPresent,
+        girlsPresent,
+        boysAbsent,
+        girlsAbsent,
       },
     });
   } catch (error) {
@@ -206,10 +228,31 @@ export const getActiveTrip = async (req, res) => {
     }
 
     const totalStudents = await Student.countDocuments({ accountStatus: 'ACTIVE' });
-    const presentCount = await Attendance.countDocuments({
+    const totalBoys = await Student.countDocuments({ accountStatus: 'ACTIVE', gender: 'Male' });
+    const totalGirls = await Student.countDocuments({ accountStatus: 'ACTIVE', gender: 'Female' });
+
+    const presentRecords = await Attendance.find({
       tripId: activeTrip._id,
       status: { $in: ['PRESENT', 'LATE'] },
-    });
+    }).populate('studentId', 'gender');
+
+    const presentCount = presentRecords.length;
+    let boysPresent = 0;
+    let girlsPresent = 0;
+    for (const record of presentRecords) {
+      if (record.studentId?.gender === 'Female') {
+        girlsPresent++;
+      } else if (record.studentId?.gender === 'Male') {
+        boysPresent++;
+      }
+    }
+
+    const effectiveTotal = totalStudents || 55;
+    const effectiveBoys = totalBoys || 21;
+    const effectiveGirls = totalGirls || 34;
+    const absentCount = Math.max(0, effectiveTotal - presentCount);
+    const boysAbsent = Math.max(0, effectiveBoys - boysPresent);
+    const girlsAbsent = Math.max(0, effectiveGirls - girlsPresent);
 
     let markedByMe = false;
     let myRecord = null;
@@ -228,9 +271,15 @@ export const getActiveTrip = async (req, res) => {
       markedByMe,
       myRecord,
       stats: {
-        totalStudents: totalStudents || 55,
+        totalStudents: effectiveTotal,
         presentCount,
-        absentCount: Math.max(0, (totalStudents || 55) - presentCount),
+        absentCount,
+        totalBoys: effectiveBoys,
+        totalGirls: effectiveGirls,
+        boysPresent,
+        girlsPresent,
+        boysAbsent,
+        girlsAbsent,
       },
     });
   } catch (error) {

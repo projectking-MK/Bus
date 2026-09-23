@@ -19,7 +19,14 @@ import {
   ChevronDown,
   Download,
   Trash2,
-  X
+  X,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  Lock,
+  User
 } from 'lucide-react';
 
 export const AdminDashboard = () => {
@@ -44,6 +51,22 @@ export const AdminDashboard = () => {
   const [isClearPctModalOpen, setIsClearPctModalOpen] = useState(false);
   const [clearingPct, setClearingPct] = useState(false);
   const [clearPctSuccessMsg, setClearPctSuccessMsg] = useState(null);
+
+  // Staff credentials state (Driver & Admin)
+  const [staffCreds, setStaffCreds] = useState({ driver: null, admin: null });
+  const [loadingStaffCreds, setLoadingStaffCreds] = useState(false);
+  const [credentialsModal, setCredentialsModal] = useState({
+    isOpen: false,
+    targetRole: 'DRIVER', // 'DRIVER' | 'ADMIN'
+    username: '',
+    password: '',
+    name: '',
+    showPassword: false,
+    saving: false,
+    error: null,
+  });
+  const [copiedStaffRole, setCopiedStaffRole] = useState(null);
+  const [staffSuccessMsg, setStaffSuccessMsg] = useState(null);
 
   const [exportingExcel, setExportingExcel] = useState(false);
   const [exportingCSV, setExportingCSV] = useState(false);
@@ -230,8 +253,83 @@ export const AdminDashboard = () => {
     }
   };
 
+  const fetchStaffCredentials = async () => {
+    try {
+      setLoadingStaffCreds(true);
+      const res = await axiosClient.get('/api/admin/staff-credentials');
+      if (res.data.success) {
+        setStaffCreds({
+          driver: res.data.driver,
+          admin: res.data.admin,
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch staff credentials:', err);
+    } finally {
+      setLoadingStaffCreds(false);
+    }
+  };
+
+  const openCredentialsModal = (targetRole) => {
+    const isDriver = targetRole === 'DRIVER';
+    const current = isDriver ? staffCreds.driver : staffCreds.admin;
+    setCredentialsModal({
+      isOpen: true,
+      targetRole,
+      username: current?.username || (isDriver ? 'driver' : 'admin'),
+      password: current?.currentPassword || (isDriver ? 'Driver@123' : 'Admin@123'),
+      name: current?.name || (isDriver ? 'Anand' : 'R. Kowshiek IT'),
+      showPassword: false,
+      saving: false,
+      error: null,
+    });
+  };
+
+  const handleUpdateStaffCredentials = async (e) => {
+    e.preventDefault();
+    if (!credentialsModal.username || !credentialsModal.password) {
+      setCredentialsModal((prev) => ({ ...prev, error: 'Please enter both username and password.' }));
+      return;
+    }
+    if (credentialsModal.password.length < 4) {
+      setCredentialsModal((prev) => ({ ...prev, error: 'Password must be at least 4 characters long.' }));
+      return;
+    }
+
+    try {
+      setCredentialsModal((prev) => ({ ...prev, saving: true, error: null }));
+      const rolePath = credentialsModal.targetRole.toLowerCase();
+      const res = await axiosClient.put(`/api/admin/staff-credentials/${rolePath}`, {
+        username: credentialsModal.username,
+        password: credentialsModal.password,
+        name: credentialsModal.name,
+      });
+
+      if (res.data.success) {
+        setStaffSuccessMsg(res.data.message || `${credentialsModal.targetRole === 'DRIVER' ? 'Driver' : 'Admin'} credentials updated successfully!`);
+        setTimeout(() => setStaffSuccessMsg(null), 6000);
+        setCredentialsModal((prev) => ({ ...prev, isOpen: false, saving: false }));
+        await fetchStaffCredentials();
+      }
+    } catch (err) {
+      setCredentialsModal((prev) => ({
+        ...prev,
+        saving: false,
+        error: err.response?.data?.message || 'Failed to update credentials.',
+      }));
+    }
+  };
+
+  const handleCopyStaffPassword = (role, pwd) => {
+    if (!pwd) return;
+    navigator.clipboard.writeText(pwd);
+    setCopiedStaffRole(role);
+    setTimeout(() => setCopiedStaffRole(null), 2500);
+  };
+
   useEffect(() => {
     fetchDashboard();
+    fetchStaffCredentials();
     const interval = setInterval(() => {
       fetchDashboard();
     }, 15000); // Poll every 15s for live counts
@@ -368,10 +466,44 @@ export const AdminDashboard = () => {
             <Percent className="w-4 h-4 text-rose-600" />
             <span>Clear Attendance %</span>
           </button>
+
+          {/* Change Driver Credentials Button */}
+          <button
+            type="button"
+            onClick={() => openCredentialsModal('DRIVER')}
+            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-sm transition shadow-sm flex items-center space-x-2 cursor-pointer"
+            title="Change Driver Login Username & Password"
+          >
+            <Bus className="w-4 h-4 text-slate-950" />
+            <span>Driver Credentials</span>
+          </button>
+
+          {/* Change Admin Credentials Button */}
+          <button
+            type="button"
+            onClick={() => openCredentialsModal('ADMIN')}
+            className="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-sm transition shadow-sm flex items-center space-x-2 cursor-pointer"
+            title="Change Admin Login Username & Password"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            <span>Admin Credentials</span>
+          </button>
         </div>
       </div>
 
       {/* Notifications */}
+      {staffSuccessMsg && (
+        <div className="mb-6 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center space-x-2.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <span className="font-semibold">{staffSuccessMsg}</span>
+          </div>
+          <button onClick={() => setStaffSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900 p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {clearPctSuccessMsg && (
         <div className="mb-6 p-4 rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-sm flex items-center justify-between shadow-sm animate-fade-in">
           <div className="flex items-center space-x-2.5">
@@ -407,6 +539,127 @@ export const AdminDashboard = () => {
           </button>
         </div>
       )}
+
+      {/* Driver & Admin Credentials Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        {/* Driver Account Card */}
+        <div className="bg-white p-5 rounded-2xl border border-amber-200/80 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                <Bus className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {staffCreds.driver?.name || 'Anand'}
+                  </h3>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                    DRIVER ACCOUNT
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">College Bus #BUS-09 Driver</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openCredentialsModal('DRIVER')}
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Change Login</span>
+            </button>
+          </div>
+
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Driver Username:</span>
+              <span className="font-mono font-bold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                {staffCreds.driver?.username || 'driver'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Driver Password:</span>
+              <div className="flex items-center space-x-2">
+                <span className="font-mono font-bold text-amber-900 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  {staffCreds.driver?.currentPassword || 'Driver@123'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyStaffPassword('DRIVER', staffCreds.driver?.currentPassword || 'Driver@123')}
+                  className="p-1 text-slate-500 hover:text-amber-700 rounded transition cursor-pointer"
+                  title="Copy password"
+                >
+                  {copiedStaffRole === 'DRIVER' ? (
+                    <Check className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Admin Account Card */}
+        <div className="bg-white p-5 rounded-2xl border border-purple-200/80 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h3 className="font-extrabold text-slate-900 text-base">
+                    {staffCreds.admin?.name || 'R. Kowshiek IT'}
+                  </h3>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200">
+                    ADMIN ACCOUNT
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">System Administrator</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => openCredentialsModal('ADMIN')}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5 cursor-pointer"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Change Login</span>
+            </button>
+          </div>
+
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 space-y-2 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Admin Username:</span>
+              <span className="font-mono font-bold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200">
+                {staffCreds.admin?.username || 'admin'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-500 font-medium">Admin Password:</span>
+              <div className="flex items-center space-x-2">
+                <span className="font-mono font-bold text-purple-900 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                  {staffCreds.admin?.currentPassword || 'Admin@123'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleCopyStaffPassword('ADMIN', staffCreds.admin?.currentPassword || 'Admin@123')}
+                  className="p-1 text-slate-500 hover:text-purple-700 rounded transition cursor-pointer"
+                  title="Copy password"
+                >
+                  {copiedStaffRole === 'ADMIN' ? (
+                    <Check className="w-4 h-4 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Trip Selector & Session Status Bar */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-sm mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1065,6 +1318,163 @@ export const AdminDashboard = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Driver / Admin Credentials Modal */}
+      {credentialsModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100 relative">
+            <button
+              onClick={() => setCredentialsModal((prev) => ({ ...prev, isOpen: false }))}
+              disabled={credentialsModal.saving}
+              className="absolute right-5 top-5 p-1.5 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center space-x-3 mb-5">
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold ${
+                  credentialsModal.targetRole === 'DRIVER'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-purple-100 text-purple-800'
+                }`}
+              >
+                {credentialsModal.targetRole === 'DRIVER' ? (
+                  <Bus className="w-6 h-6" />
+                ) : (
+                  <ShieldCheck className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <span
+                  className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                    credentialsModal.targetRole === 'DRIVER'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                      : 'bg-purple-100 text-purple-800 border border-purple-200'
+                  }`}
+                >
+                  {credentialsModal.targetRole} CREDENTIALS
+                </span>
+                <h3 className="text-lg font-extrabold text-slate-900 mt-0.5">
+                  Change {credentialsModal.targetRole === 'DRIVER' ? 'Driver' : 'Admin'} Login
+                </h3>
+              </div>
+            </div>
+
+            {credentialsModal.error && (
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{credentialsModal.error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateStaffCredentials} className="space-y-4">
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={credentialsModal.name}
+                  onChange={(e) =>
+                    setCredentialsModal((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  placeholder={credentialsModal.targetRole === 'DRIVER' ? 'Anand' : 'R. Kowshiek IT'}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                />
+              </div>
+
+              {/* Login Username */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Login Username
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={credentialsModal.username}
+                  onChange={(e) =>
+                    setCredentialsModal((prev) => ({ ...prev, username: e.target.value }))
+                  }
+                  placeholder={credentialsModal.targetRole === 'DRIVER' ? 'driver' : 'admin'}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Can be used instead of email to sign into the system.
+                </p>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={credentialsModal.showPassword ? 'text' : 'password'}
+                    required
+                    value={credentialsModal.password}
+                    onChange={(e) =>
+                      setCredentialsModal((prev) => ({ ...prev, password: e.target.value }))
+                    }
+                    placeholder="Enter new password (min. 4 characters)"
+                    className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCredentialsModal((prev) => ({ ...prev, showPassword: !prev.showPassword }))
+                    }
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {credentialsModal.showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Password will be securely encrypted and immediately usable for login.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setCredentialsModal((prev) => ({ ...prev, isOpen: false }))}
+                  disabled={credentialsModal.saving}
+                  className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={credentialsModal.saving}
+                  className={`flex-1 py-3 px-4 text-white font-bold rounded-xl text-sm transition shadow-md flex items-center justify-center space-x-2 disabled:opacity-60 cursor-pointer ${
+                    credentialsModal.targetRole === 'DRIVER'
+                      ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-200'
+                      : 'bg-purple-600 hover:bg-purple-700 shadow-purple-200'
+                  }`}
+                >
+                  {credentialsModal.saving ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Save Credentials</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

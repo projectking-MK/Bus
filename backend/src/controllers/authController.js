@@ -84,12 +84,12 @@ export const login = async (req, res) => {
       });
     }
 
-    // Ensure admin and driver names are updated asynchronously if needed
-    if (user.role === 'ADMIN' && user.name !== 'R. Kowshiek IT') {
+    // Only upgrade legacy seed names if encountered
+    if (user.role === 'ADMIN' && user.name && user.name.includes('Ramanathan')) {
       user.name = 'R. Kowshiek IT';
       User.updateOne({ _id: user._id }, { name: 'R. Kowshiek IT' }).catch(() => {});
     }
-    if (user.role === 'DRIVER' && user.name !== 'Anand') {
+    if (user.role === 'DRIVER' && user.name && user.name.includes('Muthuvel')) {
       user.name = 'Anand';
       User.updateOne({ _id: user._id }, { name: 'Anand' }).catch(() => {});
     }

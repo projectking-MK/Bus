@@ -1675,6 +1675,193 @@ test('33. Admin Academic Year Filter: accurately filters students by academic ye
   assert.equal(resDigit.body.students.length, res3.body.students.length);
 });
 
+test('34. Admin Staff Credentials Management: Admin can view and update Driver and Admin username & password, and logins succeed with updated credentials', async () => {
+  // 1. Fetch current staff credentials
+  const getRes = await makeRequest('GET', '/api/admin/staff-credentials', null, {
+    Authorization: `Bearer ${adminToken}`,
+  });
+  assert.equal(getRes.status, 200);
+  assert.equal(getRes.body.success, true);
+  assert.ok(getRes.body.driver);
+  assert.ok(getRes.body.admin);
+  assert.equal(getRes.body.driver.role, 'DRIVER');
+  assert.equal(getRes.body.admin.role, 'ADMIN');
+
+  // 2. Update Driver username and password
+  const newDriverUsername = 'anand_bus09';
+  const newDriverPassword = 'NewDriverPassword#2026';
+  const updateDriverRes = await makeRequest(
+    'PUT',
+    '/api/admin/staff-credentials/driver',
+    {
+      username: newDriverUsername,
+      password: newDriverPassword,
+    },
+    {
+      Authorization: `Bearer ${adminToken}`,
+    }
+  );
+  assert.equal(updateDriverRes.status, 200);
+  assert.equal(updateDriverRes.body.success, true);
+  assert.equal(updateDriverRes.body.user.username, newDriverUsername);
+  assert.equal(updateDriverRes.body.user.currentPassword, newDriverPassword);
+
+  // 3. Test Driver login with new username and password
+  const driverLoginRes = await makeRequest('POST', '/api/auth/login', {
+    username: newDriverUsername,
+    password: newDriverPassword,
+  });
+  assert.equal(driverLoginRes.status, 200);
+  assert.equal(driverLoginRes.body.success, true);
+  assert.equal(driverLoginRes.body.user.role, 'DRIVER');
+
+  // 4. Update Admin username and password
+  const newAdminUsername = 'superadmin_vsb';
+  const newAdminPassword = 'NewAdminPassword#2026';
+  const updateAdminRes = await makeRequest(
+    'PUT',
+    '/api/admin/staff-credentials/admin',
+    {
+      username: newAdminUsername,
+      password: newAdminPassword,
+    },
+    {
+      Authorization: `Bearer ${adminToken}`,
+    }
+  );
+  assert.equal(updateAdminRes.status, 200);
+  assert.equal(updateAdminRes.body.success, true);
+  assert.equal(updateAdminRes.body.user.username, newAdminUsername);
+  assert.equal(updateAdminRes.body.user.currentPassword, newAdminPassword);
+
+  // 5. Test Admin login with new username and password
+  const adminLoginRes = await makeRequest('POST', '/api/auth/login', {
+    username: newAdminUsername,
+    password: newAdminPassword,
+  });
+  assert.equal(adminLoginRes.status, 200);
+  assert.equal(adminLoginRes.body.success, true);
+  assert.equal(adminLoginRes.body.user.role, 'ADMIN');
+
+  // 6. Test duplicate username rejection
+  const duplicateRes = await makeRequest(
+    'PUT',
+    '/api/admin/staff-credentials/driver',
+    {
+      username: newAdminUsername, // already taken by admin
+    },
+    {
+      Authorization: `Bearer ${adminToken}`,
+    }
+  );
+  assert.equal(duplicateRes.status, 400);
+  assert.equal(duplicateRes.body.success, false);
+});
+
+test('35. Driver Trip Stats: returns accurate boys and girls present and absent counts on active trip', async () => {
+  // 1. Ensure any active trip is closed first
+  await BusTrip.updateMany({ status: 'ACTIVE' }, { status: 'COMPLETED', endTime: new Date() });
+
+  // 2. Start a new trip
+  const startRes = await makeRequest(
+    'POST',
+    '/api/trips/start',
+    {
+      session: 'MORNING',
+      latitude: 13.0827,
+      longitude: 80.2707,
+      geofenceRadius: 3000,
+    },
+    { Authorization: `Bearer ${driverToken}` }
+  );
+  assert.equal(startRes.status, 201);
+  const trip = startRes.body.trip;
+
+  // 3. Query active trip stats
+  const expectedTotal = await Student.countDocuments({ accountStatus: 'ACTIVE' });
+  const expectedBoys = await Student.countDocuments({ accountStatus: 'ACTIVE', gender: 'Male' });
+  const expectedGirls = await Student.countDocuments({ accountStatus: 'ACTIVE', gender: 'Female' });
+
+  const activeRes = await makeRequest('GET', '/api/trips/active', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  assert.equal(activeRes.status, 200);
+  assert.equal(activeRes.body.active, true);
+  assert.equal(activeRes.body.stats.totalStudents, expectedTotal);
+  assert.equal(activeRes.body.stats.totalBoys, expectedBoys);
+  assert.equal(activeRes.body.stats.totalGirls, expectedGirls);
+  assert.equal(activeRes.body.stats.presentCount, 0);
+  assert.equal(activeRes.body.stats.boysPresent, 0);
+  assert.equal(activeRes.body.stats.girlsPresent, 0);
+  assert.equal(activeRes.body.stats.boysAbsent, expectedBoys);
+  assert.equal(activeRes.body.stats.girlsAbsent, expectedGirls);
+
+  // 4. Create an attendance record for a Male student and a Female student
+  const maleStudent = await Student.findOne({ gender: 'Male', accountStatus: 'ACTIVE' });
+  const femaleStudent = await Student.findOne({ gender: 'Female', accountStatus: 'ACTIVE' });
+
+  if (maleStudent) {
+    await Attendance.create({
+      studentId: maleStudent._id,
+      tripId: trip._id,
+      date: new Date(),
+      markedAt: new Date(),
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+      deviceId: 'MALE_TEST_DEV',
+      status: 'PRESENT',
+    });
+  }
+
+  if (femaleStudent) {
+    await Attendance.create({
+      studentId: femaleStudent._id,
+      tripId: trip._id,
+      date: new Date(),
+      markedAt: new Date(),
+      latitude: 13.0827,
+      longitude: 80.2707,
+      gpsAccuracy: 10,
+      deviceId: 'FEMALE_TEST_DEV',
+      status: 'PRESENT',
+    });
+  }
+
+  // 5. Query active trip stats again to verify counts updated
+  const updatedActiveRes = await makeRequest('GET', '/api/trips/active', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  assert.equal(updatedActiveRes.status, 200);
+  assert.equal(updatedActiveRes.body.stats.presentCount, 2);
+  assert.equal(updatedActiveRes.body.stats.boysPresent, 1);
+  assert.equal(updatedActiveRes.body.stats.girlsPresent, 1);
+  assert.equal(updatedActiveRes.body.stats.boysAbsent, expectedBoys - 1);
+  assert.equal(updatedActiveRes.body.stats.girlsAbsent, expectedGirls - 1);
+
+  // 6. Query active trip attendees endpoint
+  const attendeesRes = await makeRequest('GET', '/api/attendance/active-trip', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  assert.equal(attendeesRes.status, 200);
+  assert.equal(attendeesRes.body.count, 2);
+  assert.equal(attendeesRes.body.stats.boysPresent, 1);
+  assert.equal(attendeesRes.body.stats.girlsPresent, 1);
+  assert.ok(attendeesRes.body.records[0].studentId.gender);
+
+  // 7. Stop trip and verify summary includes gender metrics
+  const stopRes = await makeRequest('POST', '/api/trips/stop', null, {
+    Authorization: `Bearer ${driverToken}`,
+  });
+  assert.equal(stopRes.status, 200);
+  assert.equal(stopRes.body.summary.boysPresent, 1);
+  assert.equal(stopRes.body.summary.girlsPresent, 1);
+  assert.equal(stopRes.body.summary.boysAbsent, expectedBoys - 1);
+  assert.equal(stopRes.body.summary.girlsAbsent, expectedGirls - 1);
+});
+
+
+
 
 
 

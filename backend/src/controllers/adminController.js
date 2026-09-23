@@ -1,3 +1,4 @@
+import { User } from '../models/User.js';
 import { Student } from '../models/Student.js';
 import { Device } from '../models/Device.js';
 import { Attendance } from '../models/Attendance.js';
@@ -457,3 +458,154 @@ export const getBusSettings = async (req, res) => {
     });
   }
 };
+
+export const getStaffCredentials = async (req, res) => {
+  try {
+    const driver = await User.findOne({ role: 'DRIVER' }).select('-password');
+    const admin = await User.findOne({ role: 'ADMIN' }).select('-password');
+
+    res.json({
+      success: true,
+      driver: driver
+        ? {
+            _id: driver._id,
+            name: driver.name,
+            username: driver.username || 'driver',
+            email: driver.email,
+            phone: driver.phone || '',
+            role: driver.role,
+            currentPassword: driver.rawPassword || 'Driver@123',
+          }
+        : null,
+      admin: admin
+        ? {
+            _id: admin._id,
+            name: admin.name,
+            username: admin.username || 'admin',
+            email: admin.email,
+            phone: admin.phone || '',
+            role: admin.role,
+            currentPassword: admin.rawPassword || 'Admin@123',
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error('[Get Staff Credentials Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch staff credentials',
+      error: error.message,
+    });
+  }
+};
+
+export const updateStaffCredentials = async (req, res) => {
+  try {
+    const targetRole = (req.params.targetRole || req.body.targetRole || '').toUpperCase();
+    const { username, password, name, phone } = req.body;
+
+    if (!['DRIVER', 'ADMIN'].includes(targetRole)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid target role. Must be either DRIVER or ADMIN.',
+      });
+    }
+
+    if (!username && !password && !name && phone === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide at least a new username or password to update.',
+      });
+    }
+
+    let targetUser = await User.findOne({ role: targetRole });
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: `${targetRole} user account not found in database.`,
+      });
+    }
+
+    const auditDetails = {
+      targetRole,
+      targetUserId: targetUser._id,
+    };
+
+    if (username && username.trim()) {
+      const cleanUsername = username.trim();
+      const existing = await User.findOne({
+        username: { $regex: new RegExp(`^${cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        _id: { $ne: targetUser._id },
+      });
+
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: `Username "${cleanUsername}" is already taken by another account.`,
+        });
+      }
+
+      targetUser.username = cleanUsername;
+      auditDetails.usernameChanged = true;
+      auditDetails.newUsername = cleanUsername;
+    }
+
+    if (password && password.trim()) {
+      const cleanPassword = password.trim();
+      if (cleanPassword.length < 4) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 4 characters long.',
+        });
+      }
+
+      targetUser.password = cleanPassword; // Mongoose pre-save hashes this with bcrypt
+      targetUser.rawPassword = cleanPassword;
+      auditDetails.passwordChanged = true;
+    }
+
+    if (name && name.trim()) {
+      targetUser.name = name.trim();
+      auditDetails.nameChanged = true;
+    }
+
+    if (phone !== undefined) {
+      targetUser.phone = phone.trim();
+      auditDetails.phoneChanged = true;
+    }
+
+    await targetUser.save();
+
+    await AuditLog.create({
+      action: `${targetRole}_CREDENTIALS_UPDATED`,
+      performedBy: req.user._id,
+      details: auditDetails,
+      ipAddress: req.ip || '',
+      status: 'SUCCESS',
+    });
+
+    const activePassword = targetUser.rawPassword || (targetRole === 'DRIVER' ? 'Driver@123' : 'Admin@123');
+
+    res.json({
+      success: true,
+      message: `${targetRole === 'DRIVER' ? 'Driver' : 'Admin'} credentials updated successfully.`,
+      user: {
+        _id: targetUser._id,
+        name: targetUser.name,
+        username: targetUser.username,
+        email: targetUser.email,
+        role: targetUser.role,
+        phone: targetUser.phone,
+        currentPassword: activePassword,
+      },
+    });
+  } catch (error) {
+    console.error('[Update Staff Credentials Error]', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update credentials',
+      error: error.message,
+    });
+  }
+};
+
