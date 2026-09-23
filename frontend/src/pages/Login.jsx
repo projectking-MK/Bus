@@ -51,28 +51,32 @@ export const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-emerald-950 via-green-900 to-emerald-950 px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Decorative ambient glowing orbs */}
-      <div className="absolute -top-28 -left-28 w-96 h-96 bg-yellow-400/15 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute -bottom-28 -right-28 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div className="min-h-screen flex flex-col justify-center bg-gradient-to-br from-emerald-950 via-[#063024] to-slate-950 px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden selection:bg-yellow-400 selection:text-slate-950">
+      {/* Decorative Campus Aurora & Golden Sunbeam Ambient Glows */}
+      <div className="absolute -top-32 -left-32 w-[480px] h-[480px] bg-yellow-400/20 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
+      <div className="absolute -bottom-32 -right-32 w-[520px] h-[520px] bg-emerald-500/20 rounded-full blur-[140px] pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-gradient-to-tr from-emerald-600/15 via-amber-400/10 to-transparent rounded-full blur-[160px] pointer-events-none"></div>
+
+      {/* Subtle Aurora Grid Texture Overlay */}
+      <div className="absolute inset-0 bg-[radial-gradient(#facc15_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.04] pointer-events-none"></div>
 
       {/* Top Corner Quick Contact Button */}
       <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-20">
         <button
           type="button"
           onClick={() => setShowContactModal(true)}
-          className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-xs font-black shadow-lg shadow-yellow-500/20 border border-yellow-300 transition active:scale-95 cursor-pointer"
+          className="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-300 hover:to-amber-300 text-slate-950 text-xs font-black shadow-lg shadow-yellow-500/25 border border-yellow-300/80 transition-all hover:scale-105 active:scale-95 cursor-pointer"
           title="Contact Driver & Bus Incharge"
         >
-          <PhoneCall className="w-3.5 h-3.5" />
-          <span>Contact</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-700 animate-pulse"></span>
+          <PhoneCall className="w-3.5 h-3.5 text-slate-950" />
+          <span>Emergency Contacts</span>
         </button>
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center relative z-10">
-        {/* Real College Bus Logo Badge */}
-        <div className="mx-auto w-24 h-24 rounded-3xl overflow-hidden shadow-2xl shadow-yellow-500/30 border-4 border-yellow-400 mb-4 transform hover:scale-105 transition bg-yellow-100 flex items-center justify-center ring-4 ring-emerald-400/30">
+        {/* Real College Bus Logo Badge with Luminous Sunbeam Ring */}
+        <div className="mx-auto w-24 h-24 rounded-3xl overflow-hidden shadow-2xl shadow-yellow-500/30 border-4 border-yellow-400 mb-4 transform hover:scale-105 transition-all duration-300 bg-yellow-100 flex items-center justify-center ring-4 ring-yellow-400/30">
           <img
             src="/bus-logo.jpg"
             alt="VSB Institutions Bus 09"
@@ -80,23 +84,36 @@ export const Login = () => {
           />
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          <span className="text-yellow-400">Smart</span>Bus Attendance
+          <span className="text-yellow-400 drop-shadow-sm">Smart</span>Bus Attendance
         </h2>
-        <div className="mt-1 flex items-center justify-center space-x-2">
-          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-yellow-400 text-slate-950 shadow-sm">
+        <div className="mt-1.5 flex items-center justify-center space-x-2">
+          <span className="px-3 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-yellow-400 to-amber-400 text-slate-950 shadow-md shadow-yellow-500/20">
             BUS NO 09
           </span>
-          <span className="text-xs text-emerald-200 font-semibold">
-            VSB Institutions
+          <span className="text-xs text-emerald-200 font-semibold tracking-wide flex items-center space-x-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+            <span>VSB Institutions</span>
           </span>
         </div>
       </div>
 
       <div className="mt-7 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="bg-white py-8 px-6 shadow-2xl rounded-3xl sm:px-10 border-t-4 border-t-yellow-400 border-x border-b border-emerald-100">
-          <form className="space-y-5" onSubmit={handleSubmit}>
+        <div className="bg-white/95 backdrop-blur-2xl py-8 px-6 sm:px-10 rounded-3xl shadow-2xl shadow-emerald-950/50 border border-white/80 relative overflow-hidden ring-1 ring-yellow-400/25">
+          {/* Top Aurora & Sunbeam Accent Bar */}
+          <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-emerald-600 via-yellow-400 to-emerald-600"></div>
+
+          <div className="mb-5 text-center">
+            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Sign In to Your Account
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Enter your student, driver, or admin credentials
+            </p>
+          </div>
+
+          <form className="space-y-4 sm:space-y-5" onSubmit={handleSubmit}>
             {error && (
-              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center space-x-2">
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 flex items-center space-x-2">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
                 <span>{error}</span>
               </div>
@@ -116,7 +133,7 @@ export const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. Kowshiek or Hari"
-                  className="block w-full pl-10 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  className="block w-full pl-10 pr-3.5 py-3 bg-slate-50/90 border border-slate-200/90 rounded-2xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-yellow-400 transition-all shadow-sm"
                 />
               </div>
             </div>
@@ -137,7 +154,7 @@ export const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition"
+                  className="block w-full pl-10 pr-10 py-3 bg-slate-50/90 border border-slate-200/90 rounded-2xl text-sm placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-yellow-400 transition-all shadow-sm"
                 />
                 <button
                   type="button"
@@ -153,10 +170,10 @@ export const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-700/25 text-sm font-bold text-slate-950 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-300 hover:to-amber-400 active:scale-[0.98] border border-yellow-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition cursor-pointer disabled:opacity-50"
+              className="w-full flex justify-center items-center py-3.5 px-4 rounded-2xl shadow-xl shadow-yellow-500/25 text-sm font-black text-slate-950 bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-400 hover:from-yellow-300 hover:to-amber-400 active:scale-[0.98] border border-yellow-300/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-400 transition-all cursor-pointer disabled:opacity-50"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 'Sign In to Dashboard'
               )}
@@ -172,7 +189,7 @@ export const Login = () => {
           <p className="text-sm sm:text-base font-black text-yellow-300 tracking-wide mt-0.5">
             Kowshiek R
           </p>
-          <p className="text-sm sm:text-base text-yellow-400 font-bold mt-0.5">
+          <p className="text-xs sm:text-sm text-emerald-200 font-bold mt-0.5">
             Department of IT
           </p>
         </div>
