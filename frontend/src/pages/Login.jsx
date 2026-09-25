@@ -123,13 +123,10 @@ export const Login = () => {
           <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-emerald-400 via-yellow-300 to-emerald-400 shadow-[0_0_22px_rgba(250,204,21,0.7)]"></div>
 
           {/* Card Subtitle Matrix Bar */}
-          <div className="bg-[#040E0A]/95 border-b border-emerald-500/25 -mx-6 sm:-mx-9 -mt-6 sm:-mt-9 px-6 sm:px-9 py-3.5 mb-6 flex items-center justify-between">
+          <div className="bg-[#040E0A]/95 border-b border-emerald-500/25 -mx-6 sm:-mx-9 -mt-6 sm:-mt-9 px-6 sm:px-9 py-3.5 mb-6 flex items-center justify-center">
             <span className="font-black text-xs uppercase tracking-wider text-yellow-400 flex items-center space-x-1.5">
               <span className="text-emerald-400">⚡</span>
               <span>Student & Staff Portal</span>
-            </span>
-            <span className="px-2.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 font-black rounded-lg text-[10px] uppercase shadow-[0_0_12px_rgba(16,185,129,0.6)]">
-              Bio-Tech Active
             </span>
           </div>
 
