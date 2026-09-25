@@ -14,6 +14,30 @@ export const isSecureOrigin = () => {
   );
 };
 
+export const saveCachedPosition = (newPos) => {
+  if (!newPos || newPos.latitude === undefined || newPos.longitude === undefined) return;
+  try {
+    const raw = localStorage.getItem('smart_bus_last_gps');
+    if (raw) {
+      const prev = JSON.parse(raw);
+      const isFresh = Date.now() - (prev.timestamp || 0) < 90000;
+      // If previous fix was fresh and has superior accuracy (<= 65m) while new fix is coarse (> 90m), preserve the better fix
+      if (isFresh && prev.accuracy && newPos.accuracy && newPos.accuracy > 90 && prev.accuracy <= 65) {
+        return;
+      }
+    }
+    localStorage.setItem(
+      'smart_bus_last_gps',
+      JSON.stringify({
+        latitude: newPos.latitude,
+        longitude: newPos.longitude,
+        accuracy: Math.round(newPos.accuracy || 15),
+        timestamp: newPos.timestamp || Date.now(),
+      })
+    );
+  } catch (_) {}
+};
+
 export const getCurrentPosition = (options = {}) => {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined' || !navigator?.geolocation) {
@@ -43,9 +67,7 @@ export const getCurrentPosition = (options = {}) => {
           accuracy: Math.round(pos.coords.accuracy || 15),
           timestamp: pos.timestamp || Date.now(),
         };
-        try {
-          localStorage.setItem('smart_bus_last_gps', JSON.stringify(result));
-        } catch (_) {}
+        saveCachedPosition(result);
         resolve(result);
       },
       (error) => {
@@ -59,9 +81,7 @@ export const getCurrentPosition = (options = {}) => {
               accuracy: Math.round(pos.coords.accuracy || 35),
               timestamp: pos.timestamp || Date.now(),
             };
-            try {
-              localStorage.setItem('smart_bus_last_gps', JSON.stringify(result));
-            } catch (_) {}
+            saveCachedPosition(result);
             resolve(result);
           },
           (fallbackErr) => {
@@ -224,9 +244,135 @@ export const forceEnableLocation = async (options = {}) => {
     accuracy: 25,
     timestamp: Date.now(),
   };
-  try {
-    localStorage.setItem('smart_bus_last_gps', JSON.stringify(fallback));
-  } catch (_) {}
+  saveCachedPosition(fallback);
   return fallback;
 };
+
+/**
+ * Intelligently acquires and refines GPS position to avoid "Low GPS Accuracy" errors.
+ *
+ * Mobile phones inside vehicles often return an initial coarse cellular/tower fix (accuracy > 100m)
+ * before satellite ephemeris locks in (narrowing to 5-25m) within 1 to 3 seconds.
+ *
+ * This function:
+ * 1. Resolves immediately if a fresh (< 45s) high-precision fix (<= targetAccuracy) is cached.
+ * 2. Streams real-time satellite updates via watchPosition with enableHighAccuracy: true.
+ * 3. Notifies callers via onProgress so UI can show narrowing accuracy (±Xm).
+ * 4. Resolves as soon as satellite lock tightens to <= targetAccuracy (default: 50m).
+ * 5. If settling takes longer than maxWaitMs, resolves with bestFix seen (or high-accuracy cache).
+ */
+export const getRefinedPosition = ({
+  targetAccuracy = 50,
+  acceptableAccuracy = 95,
+  maxWaitMs = 3500,
+  onProgress = null,
+} = {}) => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
+      return reject(new Error('Geolocation is not supported by your browser.'));
+    }
+
+    const now = Date.now();
+    let cachedGps = null;
+    try {
+      const raw = localStorage.getItem('smart_bus_last_gps');
+      if (raw) cachedGps = JSON.parse(raw);
+    } catch (_) {}
+
+    // Fast path: if we already have a recent (< 45s) high-precision fix
+    if (
+      cachedGps &&
+      cachedGps.latitude &&
+      cachedGps.accuracy &&
+      cachedGps.accuracy <= targetAccuracy &&
+      now - (cachedGps.timestamp || 0) < 45000
+    ) {
+      if (onProgress) onProgress(cachedGps.accuracy);
+      return resolve(cachedGps);
+    }
+
+    let watchId = null;
+    let timer = null;
+    let bestFix = (cachedGps && cachedGps.latitude && now - (cachedGps.timestamp || 0) < 120000)
+      ? cachedGps
+      : null;
+
+    const cleanup = () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      if (timer !== null) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const handleNewPos = (pos) => {
+      const acc = Math.round(pos.coords.accuracy || 20);
+      const current = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: acc,
+        timestamp: pos.timestamp || Date.now(),
+      };
+
+      if (onProgress) onProgress(acc);
+
+      if (!bestFix || acc < bestFix.accuracy) {
+        bestFix = current;
+        saveCachedPosition(current);
+      }
+
+      // If accuracy reaches the target (e.g. <= 50m), satellite lock is acquired!
+      if (acc <= targetAccuracy) {
+        cleanup();
+        return resolve(current);
+      }
+    };
+
+    try {
+      watchId = navigator.geolocation.watchPosition(
+        handleNewPos,
+        (err) => {
+          console.warn('[getRefinedPosition] watch error:', err.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: maxWaitMs }
+      );
+    } catch (e) {
+      console.warn('[getRefinedPosition] Failed to start watch:', e);
+    }
+
+    // Fallback timer if targetAccuracy takes up to maxWaitMs to lock
+    timer = setTimeout(() => {
+      cleanup();
+
+      if (bestFix && bestFix.latitude) {
+        return resolve(bestFix);
+      }
+
+      // Direct one-shot attempt
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const directFix = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy || 25),
+            timestamp: pos.timestamp || Date.now(),
+          };
+          saveCachedPosition(directFix);
+          resolve(directFix);
+        },
+        (finalErr) => {
+          if (cachedGps && cachedGps.latitude) {
+            return resolve(cachedGps);
+          }
+          reject(finalErr);
+        },
+        { enableHighAccuracy: true, timeout: 3000, maximumAge: 60000 }
+      );
+    }, maxWaitMs);
+  });
+};
+
 

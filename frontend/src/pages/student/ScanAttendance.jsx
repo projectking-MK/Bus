@@ -3,7 +3,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import axiosClient from '../../api/axiosClient';
 import { QRScanner } from '../../components/QRScanner';
-import { getCurrentPosition, isSecureOrigin, isLocationOffError, openDeviceLocationSettings, forceEnableLocation } from '../../utils/geolocation';
+import {
+  getCurrentPosition,
+  getRefinedPosition,
+  saveCachedPosition,
+  isSecureOrigin,
+  isLocationOffError,
+  openDeviceLocationSettings,
+  forceEnableLocation,
+} from '../../utils/geolocation';
 import { LocationSettingsModal } from '../../components/LocationSettingsModal';
 import {
   QrCode,
@@ -16,7 +24,8 @@ import {
   ArrowRight,
   ShieldCheck,
   RefreshCw,
-  Bus
+  Bus,
+  Navigation,
 } from 'lucide-react';
 
 export const ScanAttendance = () => {
@@ -38,6 +47,8 @@ export const ScanAttendance = () => {
   const [verificationResult, setVerificationResult] = useState(null);
   const [errorDetails, setErrorDetails] = useState(null);
   const [requireTripLogin, setRequireTripLogin] = useState(false);
+  const [lastScannedToken, setLastScannedToken] = useState(null);
+  const [isRefiningGps, setIsRefiningGps] = useState(false);
 
   // Proactively ensure device binding is registered for this student
   useEffect(() => {
@@ -86,6 +97,7 @@ export const ScanAttendance = () => {
       getCurrentPosition({ timeout: 8000, maximumAge: 60000, enableHighAccuracy: true })
         .then((pos) => {
           setCachedPosition(pos);
+          saveCachedPosition(pos);
           setLocationStatus('ready');
           setLocationMessage(`Live GPS (±${pos.accuracy}m)`);
           setErrorDetails(null);
@@ -102,9 +114,7 @@ export const ScanAttendance = () => {
             timestamp: Date.now(),
           };
           setCachedPosition(freshPos);
-          try {
-            localStorage.setItem('smart_bus_last_gps', JSON.stringify(freshPos));
-          } catch (_) {}
+          saveCachedPosition(freshPos);
           setLocationStatus('ready');
           setLocationMessage(`Live GPS (±${freshPos.accuracy}m)`);
           setErrorDetails(null);
@@ -180,8 +190,9 @@ export const ScanAttendance = () => {
   };
 
   const handleScanSuccess = async (scannedToken) => {
-    if (submitting || !scanning) return;
+    if (submitting || (!scanning && !isRefiningGps)) return;
 
+    setLastScannedToken(scannedToken);
     setScanning(false);
     setSubmitting(true);
     setErrorDetails(null);
@@ -200,32 +211,56 @@ export const ScanAttendance = () => {
       setChecks((prev) => ({
         ...prev,
         device: { status: 'success', label: `Device Verified: ${currentDevId.slice(0, 14)}...` },
-        gps: { status: 'checking', label: 'Acquiring real-time bus motion coordinates...' },
+        gps: { status: 'checking', label: 'Acquiring satellite lock for bus...' },
       }));
 
-      // 2. Obtain fresh GPS coordinates (ensure sub-second freshness so motion on running bus is captured, never locked)
-      let position = (studentCoords && studentCoords.latitude) ? studentCoords : cachedPosition;
-      if (!position?.latitude) {
+      // 2. Candidate position from current state or cache
+      let candidatePos = (studentCoords && studentCoords.latitude) ? studentCoords : cachedPosition;
+      if (!candidatePos?.latitude) {
         try {
           const raw = localStorage.getItem('smart_bus_last_gps');
-          if (raw) position = JSON.parse(raw);
+          if (raw) candidatePos = JSON.parse(raw);
         } catch (_) {}
       }
 
-      const isUsable = position && position.latitude && (
-        (position.timestamp && Date.now() - position.timestamp < 120000) ||
-        (position.updatedAt && Date.now() - new Date(position.updatedAt).getTime() < 120000)
-      );
+      const candidateAge = candidatePos?.timestamp ? Date.now() - candidatePos.timestamp : 999999;
+      const isCandidateHighAccuracy = candidatePos?.accuracy && candidatePos.accuracy <= 65 && candidateAge < 60000;
 
-      if (!isUsable || !position?.latitude) {
+      let position = null;
+      if (isCandidateHighAccuracy) {
+        position = candidatePos;
+      } else {
+        setChecks((prev) => ({
+          ...prev,
+          gps: {
+            status: 'checking',
+            label: candidatePos?.accuracy
+              ? `Refining satellite lock (±${Math.round(candidatePos.accuracy)}m... locking in)`
+              : 'Acquiring high-precision GPS satellite fix...',
+          },
+        }));
+
         try {
-          position = await getCurrentPosition({ timeout: 8000, maximumAge: 60000, enableHighAccuracy: true });
+          position = await getRefinedPosition({
+            targetAccuracy: 50,
+            acceptableAccuracy: 95,
+            maxWaitMs: 3500,
+            onProgress: (acc) => {
+              setChecks((prev) => ({
+                ...prev,
+                gps: {
+                  status: 'checking',
+                  label: `Refining satellite lock (±${Math.round(acc)}m... locking onto satellites)`,
+                },
+              }));
+            },
+          });
           setCachedPosition(position);
           setLocationStatus('ready');
         } catch (gpsError) {
-          // Fallback to latest known cached position if available
-          if (position?.latitude) {
+          if (candidatePos?.latitude) {
             console.warn('[ScanAttendance] Using cached transit GPS fix:', gpsError.message);
+            position = candidatePos;
           } else {
             const isOff = isLocationOffError(gpsError);
             if (isOff) {
@@ -245,6 +280,19 @@ export const ScanAttendance = () => {
             return;
           }
         }
+      }
+
+      // If position accuracy is still coarse (> 95m), check if a slightly older fix (< 3 mins) had <= 65m
+      if (position?.accuracy && position.accuracy > 95) {
+        try {
+          const raw = localStorage.getItem('smart_bus_last_gps');
+          if (raw) {
+            const older = JSON.parse(raw);
+            if (older?.latitude && older?.accuracy && older.accuracy <= 95 && Date.now() - (older.timestamp || 0) < 180000) {
+              position = older;
+            }
+          }
+        } catch (_) {}
       }
 
       setChecks((prev) => ({
@@ -296,7 +344,12 @@ export const ScanAttendance = () => {
           next.trip = { status: 'error', label: serverMessage };
         } else if (serverMessage.includes('QR')) {
           next.qr = { status: 'error', label: serverMessage };
-        } else if (serverMessage.includes('GPS') || serverMessage.includes('outside') || serverMessage.includes('area')) {
+        } else if (
+          serverMessage.includes('accuracy') ||
+          serverMessage.includes('GPS') ||
+          serverMessage.includes('outside') ||
+          serverMessage.includes('area')
+        ) {
           next.gps = { status: 'error', label: serverMessage };
         } else {
           next.qr = { status: 'error', label: serverMessage };
@@ -307,6 +360,46 @@ export const ScanAttendance = () => {
       setErrorDetails(serverMessage);
     } finally {
       setSubmitting(false);
+      setIsRefiningGps(false);
+    }
+  };
+
+  const handleRetryRefinedGPS = async () => {
+    setIsRefiningGps(true);
+    setErrorDetails(null);
+    setChecks((prev) => ({
+      ...prev,
+      gps: { status: 'checking', label: 'Refining satellite lock near window...' },
+    }));
+
+    try {
+      const refined = await getRefinedPosition({
+        targetAccuracy: 45,
+        acceptableAccuracy: 90,
+        maxWaitMs: 5000,
+        onProgress: (acc) => {
+          setChecks((prev) => ({
+            ...prev,
+            gps: {
+              status: 'checking',
+              label: `Refining satellite lock (±${Math.round(acc)}m... locking in)`,
+            },
+          }));
+        },
+      });
+      setCachedPosition(refined);
+      setLocationStatus('ready');
+
+      if (lastScannedToken) {
+        await handleScanSuccess(lastScannedToken);
+      } else {
+        handleResetScan();
+      }
+    } catch (e) {
+      console.warn('[handleRetryRefinedGPS error]', e);
+      setErrorDetails('Satellite signal still refining. Hold phone near window and retry.');
+    } finally {
+      setIsRefiningGps(false);
     }
   };
 
@@ -314,6 +407,8 @@ export const ScanAttendance = () => {
     setVerificationResult(null);
     setErrorDetails(null);
     setRequireTripLogin(false);
+    setIsRefiningGps(false);
+    setLastScannedToken(null);
     if (student && checkAndRegisterDevice) {
       checkAndRegisterDevice(student).catch(() => {});
     }
@@ -427,17 +522,37 @@ export const ScanAttendance = () => {
               </button>
             </div>
           ) : locationStatus === 'ready' && cachedPosition ? (
-            <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900 shadow-sm">
+            <div
+              className={`mb-4 p-3 rounded-2xl flex items-center justify-between text-xs shadow-sm border ${
+                cachedPosition.accuracy <= 65
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : cachedPosition.accuracy <= 100
+                  ? 'bg-blue-50 border-blue-200 text-blue-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}
+            >
               <div className="flex items-center space-x-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span className="font-semibold">GPS Active & Ready</span>
-                <span className="text-[11px] text-emerald-700 font-mono">
+                {cachedPosition.accuracy <= 65 ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                ) : cachedPosition.accuracy <= 100 ? (
+                  <Navigation className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                )}
+                <span className="font-semibold">
+                  {cachedPosition.accuracy <= 65
+                    ? 'High Precision GPS'
+                    : cachedPosition.accuracy <= 100
+                    ? 'Bus Transit GPS'
+                    : 'Refining Satellite Lock'}
+                </span>
+                <span className="text-[11px] font-mono opacity-80">
                   (±{cachedPosition.accuracy}m)
                 </span>
               </div>
               <button
                 onClick={requestLocation}
-                className="text-[11px] text-emerald-700 hover:underline font-semibold"
+                className="text-[11px] hover:underline font-semibold"
               >
                 Refresh
               </button>
@@ -493,15 +608,71 @@ export const ScanAttendance = () => {
             <QRScanner onScanSuccess={handleScanSuccess} scanning={scanning} />
           </div>
 
-          {/* Error Banner */}
-          {errorDetails && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs flex items-start space-x-3">
-              <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <strong className="font-bold block">Validation Rejected</strong>
-                <span>{errorDetails}</span>
-                {requireTripLogin ? (
-                  <div className="mt-3">
+          {/* Error Banner & Guided Troubleshooting */}
+          {errorDetails && (() => {
+            const isGpsAccuracyError =
+              errorDetails.toLowerCase().includes('accuracy') ||
+              errorDetails.toLowerCase().includes('gps accuracy') ||
+              errorDetails.toLowerCase().includes('high-accuracy');
+
+            return (
+              <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs space-y-3 shadow-sm">
+                <div className="flex items-start space-x-3">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <strong className="font-bold text-sm block text-rose-950">
+                      {isGpsAccuracyError ? 'GPS Satellite Precision Needed' : 'Validation Rejected'}
+                    </strong>
+                    <span className="text-rose-800">{errorDetails}</span>
+                  </div>
+                </div>
+
+                {isGpsAccuracyError ? (
+                  <div className="bg-white/90 border border-rose-200 rounded-xl p-3.5 space-y-2.5 text-slate-700">
+                    <p className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                      <Navigation className="w-4 h-4 text-indigo-600" />
+                      <span>Why does Low GPS Accuracy happen?</span>
+                    </p>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      Inside buses, metal roofs and tinted glass attenuate satellite signals. When first opening the camera, your phone provides an initial rough estimate before tightening lock onto satellites.
+                    </p>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-1 text-[11px] text-amber-900">
+                      <p className="font-bold">Fast Solutions:</p>
+                      <ul className="list-disc pl-4 space-y-0.5">
+                        <li>Hold your phone closer to a <strong>bus window</strong> for 3 seconds.</li>
+                        <li>Turn ON <strong>Google Location Accuracy</strong> (Android) or <strong>Precise Location</strong> (iPhone).</li>
+                      </ul>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <button
+                        onClick={handleRetryRefinedGPS}
+                        disabled={isRefiningGps}
+                        className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+                      >
+                        {isRefiningGps ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Refining Satellite Lock...</span>
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>Refine Satellite Lock & Retry</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setShowSettingsModal(true)}
+                        className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer text-center"
+                      >
+                        Settings Guide
+                      </button>
+                    </div>
+                  </div>
+                ) : requireTripLogin ? (
+                  <div className="mt-2">
                     <Link
                       to="/login"
                       className="inline-flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition text-xs"
@@ -519,8 +690,8 @@ export const ScanAttendance = () => {
                   </button>
                 )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Step-by-Step Multi-Layer Security Status Panel */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm">

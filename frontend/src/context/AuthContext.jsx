@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 import { getOrCreateDeviceIdentifier, getDeviceInfo } from '../utils/deviceFingerprint';
-import { forceEnableLocation } from '../utils/geolocation';
+import { forceEnableLocation, saveCachedPosition } from '../utils/geolocation';
 
 const AuthContext = createContext();
 
@@ -77,6 +77,12 @@ export const AuthProvider = ({ children }) => {
             longitude: lon,
             accuracy: accuracy || null,
             updatedAt: new Date(),
+          });
+          saveCachedPosition({
+            latitude: lat,
+            longitude: lon,
+            accuracy: accuracy || null,
+            timestamp: Date.now(),
           });
           setStudentGpsStatus('Live GPS Active');
           setIsLocationTurnedOff(false);

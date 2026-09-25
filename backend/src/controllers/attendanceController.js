@@ -220,7 +220,7 @@ export const markAttendance = async (req, res) => {
 
     const sLat = Number(latitude);
     const sLon = Number(longitude);
-    const sAccuracy = Number(gpsAccuracy);
+    const sAccuracy = Math.round(Number(gpsAccuracy));
 
     if (isNaN(sLat) || isNaN(sLon)) {
       return res.status(400).json({
@@ -237,6 +237,9 @@ export const markAttendance = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'GPS accuracy is too low. Please enable high-accuracy location.',
+        errorType: 'LOW_GPS_ACCURACY',
+        currentAccuracy: sAccuracy,
+        maxAllowedAccuracy: maxAccuracy,
       });
     }
 

@@ -149,6 +149,15 @@ export const LocationSettingsModal = ({
                     If Chrome asks for location permission, tap <strong>"While using the app"</strong> or tap the <strong>Tune / Lock icon 🔒</strong> in the browser address bar.
                   </div>
                 </div>
+
+                <div className="flex items-start space-x-2.5 bg-indigo-50/60 p-2 rounded-xl border border-indigo-100">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">
+                    5
+                  </span>
+                  <div>
+                    <strong className="text-emerald-900">For Low GPS Accuracy fix:</strong> Go to <strong>Settings ⚙️ &rarr; Location &rarr; Location Services</strong> and toggle <strong>Google Location Accuracy</strong> (or Wi-Fi scanning) to <strong>ON</strong>.
+                  </div>
+                </div>
               </div>
             </div>
           ) : deviceType === 'ios' ? (
@@ -192,6 +201,15 @@ export const LocationSettingsModal = ({
                   </span>
                   <div>
                     Scroll down to <strong>Safari Websites</strong> and select <strong>"While Using the App"</strong>.
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-2.5 bg-indigo-50/60 p-2 rounded-xl border border-indigo-100">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5">
+                    5
+                  </span>
+                  <div>
+                    <strong className="text-emerald-900">For Low GPS Accuracy fix:</strong> Under Safari Websites, ensure the <strong>"Precise Location"</strong> toggle switch is <strong>ON (green)</strong>.
                   </div>
                 </div>
               </div>
