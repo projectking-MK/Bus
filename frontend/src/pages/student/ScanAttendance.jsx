@@ -425,54 +425,65 @@ export const ScanAttendance = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto px-4 py-6">
+    <div className="max-w-md mx-auto px-4 py-6 relative">
+      {/* Ambient Cyber-Rave Glow Orbs */}
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-yellow-400/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-48 left-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-[90px] pointer-events-none"></div>
+
       {/* Top Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-5 relative z-10">
         <button
           onClick={() => navigate('/student/dashboard')}
-          className="p-2 text-slate-500 hover:text-slate-900 rounded-xl hover:bg-slate-100 transition"
+          className="p-2.5 text-yellow-400 hover:text-yellow-300 rounded-2xl bg-[#071911] border-2 border-emerald-500/40 hover:border-yellow-400 transition cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.15)]"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="text-center">
-          <h1 className="text-lg font-bold text-slate-900">Mark Attendance</h1>
-          <p className="text-[11px] text-slate-500 font-mono">Roll: {student?.rollNumber}</p>
+          <h1 className="text-xl font-black bg-gradient-to-r from-yellow-300 via-lime-300 to-emerald-400 bg-clip-text text-transparent">
+            Mark Attendance
+          </h1>
+          <p className="text-[11px] text-emerald-400/80 font-mono tracking-widest uppercase font-bold">
+            ROLL // {student?.rollNumber}
+          </p>
         </div>
-        <div className="w-9"></div> {/* spacer */}
+        <div className="w-10"></div> {/* spacer */}
       </div>
 
       {/* Verification Success View */}
       {verificationResult ? (
-        <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl text-center">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+        <div className="bg-[#071911] rounded-3xl p-8 border-2 border-emerald-400 shadow-[0_0_40px_rgba(16,185,129,0.3)] text-center relative overflow-hidden">
+          {/* Top Neon Laser Beam */}
+          <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-yellow-400 via-lime-300 to-emerald-400 shadow-[0_0_20px_rgba(250,204,21,0.6)]"></div>
+
+          <div className="w-16 h-16 bg-emerald-500/20 text-emerald-300 border-2 border-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce shadow-[0_0_25px_rgba(16,185,129,0.4)]">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200 mb-2">
+          <span className="inline-block px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/50 mb-2 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
             Status: PRESENT
           </span>
-          <h2 className="text-xl font-extrabold text-slate-900 mb-1">
-            Attendance Marked Successfully
+          <h2 className="text-2xl font-black text-white mb-1">
+            Attendance Marked!
           </h2>
-          <p className="text-xs text-slate-500 mb-6">
+          <p className="text-xs text-slate-300 mb-6">
             Multi-layer anti-proxy checks verified your presence on College Bus #BUS-09.
           </p>
 
-          <div className="bg-slate-50 rounded-2xl p-4 text-left space-y-2 text-xs mb-6 border border-slate-100">
-            <div className="flex justify-between text-slate-600">
+          <div className="bg-[#020B07] rounded-2xl p-4 text-left space-y-2.5 text-xs mb-6 border border-emerald-500/30">
+            <div className="flex justify-between text-slate-400">
               <span>Student Name:</span>
-              <strong className="text-slate-800">{student?.name}</strong>
+              <strong className="text-yellow-300 font-bold">{student?.name}</strong>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-slate-400">
               <span>Roll Number:</span>
-              <strong className="font-mono text-slate-800">{student?.rollNumber}</strong>
+              <strong className="font-mono text-yellow-300 font-bold">{student?.rollNumber}</strong>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-slate-400">
               <span>Distance from Bus:</span>
-              <strong className="font-mono text-slate-800">{verificationResult.details?.distanceMeters || 0} meters</strong>
+              <strong className="font-mono text-emerald-300 font-bold">{verificationResult.details?.distanceMeters || 0} meters</strong>
             </div>
-            <div className="flex justify-between text-slate-600">
+            <div className="flex justify-between text-slate-400">
               <span>Timestamp:</span>
-              <strong className="font-mono text-slate-800">
+              <strong className="font-mono text-emerald-300 font-bold">
                 {new Date(verificationResult.details?.markedAt).toLocaleTimeString()}
               </strong>
             </div>
@@ -480,7 +491,7 @@ export const ScanAttendance = () => {
 
           <button
             onClick={() => navigate('/student/dashboard')}
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl text-sm transition shadow-md shadow-indigo-200"
+            className="w-full py-3.5 bg-gradient-to-r from-yellow-400 via-lime-300 to-yellow-400 hover:from-yellow-300 hover:to-lime-200 text-slate-950 font-black rounded-2xl text-sm transition shadow-[0_0_25px_rgba(250,204,21,0.45)] cursor-pointer active:scale-95"
           >
             Return to Dashboard
           </button>
@@ -489,96 +500,96 @@ export const ScanAttendance = () => {
         <>
           {/* Proactive Location Permission Banner */}
           {(isLocationOff || isLocationTurnedOff || locationStatus === 'location_off') ? (
-            <div className="mb-4 p-4 bg-rose-50 border-2 border-rose-500 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-rose-900 shadow-md">
+            <div className="mb-4 p-4 bg-[#2D0B14]/90 border-2 border-rose-500/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.25)]">
               <div className="flex items-start space-x-2.5">
-                <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-rose-950 text-sm">⚠️ Warning: Device Location is Turned OFF</p>
-                  <p className="text-rose-700 mt-0.5 leading-relaxed">
+                  <p className="font-bold text-white text-sm">⚠️ Warning: Device Location is Turned OFF</p>
+                  <p className="text-rose-300 mt-0.5 leading-relaxed">
                     Your phone's GPS / Location service is turned off. Attendance cannot be verified without location. Please turn on Location in your phone settings.
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleTurnOnLocationClick}
-                className="self-stretch sm:self-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm cursor-pointer whitespace-nowrap"
+                className="self-stretch sm:self-auto px-4 py-2 bg-gradient-to-r from-yellow-400 via-lime-300 to-yellow-400 hover:from-yellow-300 hover:to-lime-200 active:scale-95 text-slate-950 font-black rounded-xl text-xs flex-shrink-0 transition shadow-[0_0_15px_rgba(250,204,21,0.4)] cursor-pointer whitespace-nowrap"
               >
                 Turn On Location Services
               </button>
             </div>
           ) : locationStatus === 'insecure' ? (
-            <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-sm">
+            <div className="mb-4 p-3.5 bg-[#1E1704]/90 border-2 border-amber-400/80 rounded-2xl flex items-center justify-between text-xs text-amber-200 shadow-md">
               <div className="flex items-center space-x-2.5">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
                 <div>
-                  <p className="font-bold">HTTPS Needed for GPS</p>
-                  <p className="text-[11px] text-amber-700">Mobile browsers require HTTPS to prompt for location.</p>
+                  <p className="font-bold text-white">HTTPS Needed for GPS</p>
+                  <p className="text-[11px] text-amber-300">Mobile browsers require HTTPS to prompt for location.</p>
                 </div>
               </div>
               <button
                 onClick={() => {
                   window.location.href = window.location.href.replace('http:', 'https:');
                 }}
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm"
+                className="px-3.5 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm cursor-pointer"
               >
                 Switch to HTTPS
               </button>
             </div>
           ) : locationStatus === 'ready' && cachedPosition ? (
             <div
-              className={`mb-4 p-3 rounded-2xl flex items-center justify-between text-xs shadow-sm border ${
+              className={`mb-4 p-3 rounded-2xl flex items-center justify-between text-xs shadow-sm border-2 ${
                 cachedPosition.accuracy <= 65
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  ? 'bg-[#071911] border-emerald-500/60 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                   : cachedPosition.accuracy <= 100
-                  ? 'bg-blue-50 border-blue-200 text-blue-900'
-                  : 'bg-amber-50 border-amber-200 text-amber-900'
+                  ? 'bg-[#071911] border-yellow-400/60 text-yellow-300 shadow-[0_0_15px_rgba(250,204,21,0.2)]'
+                  : 'bg-[#1E1704] border-amber-400/60 text-amber-300'
               }`}
             >
               <div className="flex items-center space-x-2">
                 {cachedPosition.accuracy <= 65 ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 ) : cachedPosition.accuracy <= 100 ? (
-                  <Navigation className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <Navigation className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                 ) : (
-                  <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
                 )}
-                <span className="font-semibold">
+                <span className="font-bold text-white">
                   {cachedPosition.accuracy <= 65
-                    ? 'High Precision GPS'
+                    ? 'High Precision GNSS'
                     : cachedPosition.accuracy <= 100
-                    ? 'Bus Transit GPS'
+                    ? 'Bus Transit GPS Lock'
                     : 'Refining Satellite Lock'}
                 </span>
-                <span className="text-[11px] font-mono opacity-80">
+                <span className="text-[11px] font-mono text-yellow-400">
                   (±{cachedPosition.accuracy}m)
                 </span>
               </div>
               <button
                 onClick={requestLocation}
-                className="text-[11px] hover:underline font-semibold"
+                className="text-[11px] text-yellow-400 hover:text-yellow-300 hover:underline font-bold font-mono cursor-pointer"
               >
                 Refresh
               </button>
             </div>
           ) : locationStatus === 'acquiring' ? (
-            <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center space-x-2.5 text-xs text-indigo-900 shadow-sm animate-pulse">
-              <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" />
-              <span>Requesting device GPS location permission...</span>
+            <div className="mb-4 p-3 bg-[#071911] border-2 border-yellow-400/50 rounded-2xl flex items-center space-x-2.5 text-xs text-yellow-300 shadow-[0_0_15px_rgba(250,204,21,0.2)] animate-pulse">
+              <RefreshCw className="w-4 h-4 text-yellow-400 animate-spin flex-shrink-0" />
+              <span className="font-semibold">Requesting device GPS location permission...</span>
             </div>
           ) : (
-            <div className="mb-4 p-3.5 bg-indigo-50 border border-indigo-200 rounded-2xl flex items-center justify-between text-xs text-indigo-950 shadow-sm">
+            <div className="mb-4 p-3.5 bg-[#071911] border-2 border-emerald-500/40 rounded-2xl flex items-center justify-between text-xs text-slate-200 shadow-md">
               <div className="flex items-center space-x-2.5">
-                <MapPin className="w-5 h-5 text-indigo-600 flex-shrink-0" />
+                <MapPin className="w-5 h-5 text-yellow-400 flex-shrink-0" />
                 <div>
-                  <p className="font-bold">Device Location Required</p>
-                  <p className="text-[11px] text-indigo-700">
+                  <p className="font-bold text-white">Device Location Required</p>
+                  <p className="text-[11px] text-emerald-400/80">
                     {locationMessage || 'Tap to grant location permission in browser.'}
                   </p>
                 </div>
               </div>
               <button
                 onClick={requestLocation}
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm"
+                className="px-3.5 py-1.5 bg-gradient-to-r from-yellow-400 to-lime-300 text-slate-950 font-black rounded-xl text-xs flex-shrink-0 transition shadow cursor-pointer active:scale-95"
               >
                 Allow Location
               </button>
@@ -587,19 +598,19 @@ export const ScanAttendance = () => {
 
           {/* Pre-scan Per-Trip Login Warning */}
           {!isTripAuthenticated && !errorDetails && (
-            <div className="mb-4 p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex items-center justify-between text-xs text-amber-950 shadow-sm">
+            <div className="mb-4 p-3.5 bg-[#1E1704]/90 border-2 border-amber-400/80 rounded-2xl flex items-center justify-between text-xs text-amber-200 shadow-md">
               <div className="flex items-center space-x-2.5">
-                <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
                 <div>
-                  <p className="font-bold">Trip Authentication Required</p>
-                  <p className="text-[11px] text-amber-700">
+                  <p className="font-bold text-white">Trip Authentication Required</p>
+                  <p className="text-[11px] text-amber-300">
                     Please log in fresh for this bus trip before marking attendance.
                   </p>
                 </div>
               </div>
               <Link
                 to="/login"
-                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm"
+                className="px-3.5 py-1.5 bg-gradient-to-r from-yellow-400 to-amber-300 hover:from-yellow-300 hover:to-amber-200 text-slate-950 font-black rounded-xl text-xs flex-shrink-0 transition shadow-sm"
               >
                 Log In
               </Link>
@@ -619,32 +630,32 @@ export const ScanAttendance = () => {
               errorDetails.toLowerCase().includes('high-accuracy');
 
             return (
-              <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs space-y-3 shadow-sm">
+              <div className="mb-6 p-4 bg-[#2D0B14]/90 border-2 border-rose-500/80 rounded-2xl text-rose-200 text-xs space-y-3 shadow-lg">
                 <div className="flex items-start space-x-3">
-                  <AlertTriangle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-rose-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <strong className="font-bold text-sm block text-rose-950">
+                    <strong className="font-bold text-sm block text-white">
                       {isGpsAccuracyError ? 'GPS Satellite Precision Needed' : 'Validation Rejected'}
                     </strong>
-                    <span className="text-rose-800">{errorDetails}</span>
+                    <span className="text-rose-300">{errorDetails}</span>
                   </div>
                 </div>
 
                 {isGpsAccuracyError ? (
-                  <div className="bg-white/90 border border-rose-200 rounded-xl p-3.5 space-y-2.5 text-slate-700">
-                    <p className="font-semibold text-slate-900 flex items-center space-x-1.5">
-                      <Navigation className="w-4 h-4 text-indigo-600" />
+                  <div className="bg-[#0A0306] border border-rose-500/40 rounded-xl p-3.5 space-y-2.5 text-slate-300">
+                    <p className="font-semibold text-white flex items-center space-x-1.5">
+                      <Navigation className="w-4 h-4 text-yellow-400" />
                       <span>Why does Low GPS Accuracy happen?</span>
                     </p>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
                       Inside buses, metal roofs and tinted glass attenuate satellite signals. When first opening the camera, your phone provides an initial rough estimate before tightening lock onto satellites.
                     </p>
 
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-1 text-[11px] text-amber-900">
-                      <p className="font-bold">Fast Solutions:</p>
+                    <div className="bg-[#1E1704] border border-amber-400/50 rounded-lg p-2.5 space-y-1 text-[11px] text-amber-200">
+                      <p className="font-bold text-yellow-300">Fast Solutions:</p>
                       <ul className="list-disc pl-4 space-y-0.5">
-                        <li>Hold your phone closer to a <strong>bus window</strong> for 3 seconds.</li>
-                        <li>Turn ON <strong>Google Location Accuracy</strong> (Android) or <strong>Precise Location</strong> (iPhone).</li>
+                        <li>Hold your phone closer to a <strong className="text-white">bus window</strong> for 3 seconds.</li>
+                        <li>Turn ON <strong className="text-white">Google Location Accuracy</strong> (Android) or <strong className="text-white">Precise Location</strong> (iPhone).</li>
                       </ul>
                     </div>
 
@@ -652,7 +663,7 @@ export const ScanAttendance = () => {
                       <button
                         onClick={handleRetryRefinedGPS}
                         disabled={isRefiningGps}
-                        className="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition shadow-sm cursor-pointer"
+                        className="flex-1 py-2.5 px-3 bg-gradient-to-r from-yellow-400 via-lime-300 to-yellow-400 hover:from-yellow-300 hover:to-lime-200 active:scale-95 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center space-x-1.5 transition shadow-[0_0_20px_rgba(250,204,21,0.35)] cursor-pointer"
                       >
                         {isRefiningGps ? (
                           <>
@@ -668,7 +679,7 @@ export const ScanAttendance = () => {
                       </button>
                       <button
                         onClick={() => setShowSettingsModal(true)}
-                        className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition cursor-pointer text-center"
+                        className="py-2.5 px-3 bg-[#071911] hover:bg-[#0C2419] border border-emerald-500/40 hover:border-yellow-400 text-emerald-300 hover:text-yellow-300 font-bold rounded-xl text-xs transition cursor-pointer text-center"
                       >
                         Settings Guide
                       </button>
@@ -678,7 +689,7 @@ export const ScanAttendance = () => {
                   <div className="mt-2">
                     <Link
                       to="/login"
-                      className="inline-flex items-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-sm transition text-xs"
+                      className="inline-flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-yellow-400 to-amber-300 text-slate-950 font-black rounded-xl shadow-sm transition text-xs"
                     >
                       <span>Log In For Current Trip</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -687,7 +698,7 @@ export const ScanAttendance = () => {
                 ) : (
                   <button
                     onClick={handleResetScan}
-                    className="mt-2 block font-semibold text-rose-700 underline hover:text-rose-900"
+                    className="mt-2 block font-bold text-yellow-400 underline hover:text-yellow-300 cursor-pointer"
                   >
                     Click here to retry scan
                   </button>
@@ -697,13 +708,13 @@ export const ScanAttendance = () => {
           })()}
 
           {/* Step-by-Step Multi-Layer Security Status Panel */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm">
-            <div className="flex items-center justify-between mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="bg-[#071911] rounded-3xl p-5 border-2 border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.15)] relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3 text-xs font-black uppercase tracking-wider text-yellow-400">
               <span className="flex items-center space-x-1.5">
-                <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Security Pipeline</span>
               </span>
-              <span>Multi-Layer</span>
+              <span className="text-emerald-400 font-mono text-[10px]">Multi-Layer</span>
             </div>
 
             <div className="space-y-3">
@@ -717,27 +728,27 @@ export const ScanAttendance = () => {
                     key={key}
                     className={`flex items-center justify-between p-2.5 rounded-xl border text-xs transition ${
                       isSuccess
-                        ? 'bg-emerald-50/60 border-emerald-200 text-emerald-900'
+                        ? 'bg-[#03150D] border-emerald-400/60 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)] font-semibold'
                         : isError
-                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        ? 'bg-[#280A12] border-rose-500/60 text-rose-200'
                         : isChecking
-                        ? 'bg-indigo-50 border-indigo-200 text-indigo-900 animate-pulse'
-                        : 'bg-slate-50 border-slate-200 text-slate-500'
+                        ? 'bg-[#1A1605] border-yellow-400/60 text-yellow-300 animate-pulse font-bold'
+                        : 'bg-[#020B07] border-emerald-950 text-slate-500'
                     }`}
                   >
                     <div className="flex items-center space-x-2.5 truncate">
-                      {key === 'device' && <Smartphone className="w-4 h-4 flex-shrink-0" />}
-                      {key === 'trip' && <Bus className="w-4 h-4 flex-shrink-0" />}
-                      {key === 'qr' && <QrCode className="w-4 h-4 flex-shrink-0" />}
-                      {key === 'gps' && <MapPin className="w-4 h-4 flex-shrink-0" />}
+                      {key === 'device' && <Smartphone className="w-4 h-4 flex-shrink-0 text-emerald-400" />}
+                      {key === 'trip' && <Bus className="w-4 h-4 flex-shrink-0 text-yellow-400" />}
+                      {key === 'qr' && <QrCode className="w-4 h-4 flex-shrink-0 text-lime-400" />}
+                      {key === 'gps' && <MapPin className="w-4 h-4 flex-shrink-0 text-emerald-400" />}
                       <span className="truncate">{item.label}</span>
                     </div>
 
                     <div className="flex-shrink-0 ml-2">
-                      {isSuccess && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
-                      {isError && <XCircle className="w-4 h-4 text-rose-600" />}
+                      {isSuccess && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
+                      {isError && <XCircle className="w-4 h-4 text-rose-400" />}
                       {isChecking && (
-                        <div className="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-3.5 h-3.5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
                       )}
                     </div>
                   </div>

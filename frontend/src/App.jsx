@@ -46,7 +46,7 @@ const AppContent = () => {
   const isLoginPage = location.pathname === '/login';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 relative">
+    <div className="min-h-screen bg-[#040806] flex flex-col font-sans text-slate-100 relative selection:bg-yellow-400 selection:text-slate-950">
       <Navbar />
       <main className="flex-1">
         <ErrorBoundary>
@@ -130,15 +130,15 @@ const AppContent = () => {
 
       {/* Global Layout Footer for authenticated pages */}
       {!isLoginPage && (
-        <footer className="py-6 border-t border-slate-200 bg-white/70 backdrop-blur-sm text-center relative z-10">
+        <footer className="py-6 border-t border-emerald-500/20 bg-[#040806]/90 backdrop-blur-sm text-center relative z-10">
           <div className="max-w-7xl mx-auto px-4 space-y-0.5">
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            <p className="text-[11px] font-bold text-emerald-400/70 uppercase tracking-widest">
               Developed and Maintained by
             </p>
-            <p className="text-sm sm:text-base font-black text-slate-800 tracking-wide">
+            <p className="text-sm sm:text-base font-black text-yellow-400 tracking-wide drop-shadow-[0_0_12px_rgba(250,204,21,0.35)]">
               Kowshiek R
             </p>
-            <p className="text-sm sm:text-base text-slate-700 font-bold">
+            <p className="text-sm sm:text-base text-emerald-300 font-bold">
               Department of IT
             </p>
           </div>

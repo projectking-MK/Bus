@@ -18,12 +18,12 @@ export const Navbar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <header className="sticky top-0 z-40 bg-[#040806]/95 backdrop-blur-xl border-b border-emerald-500/30 shadow-lg text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Title */}
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center bg-yellow-50 flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-yellow-500/20 border-2 border-yellow-400 flex items-center justify-center bg-[#071911] flex-shrink-0">
               <img
                 src="/bus-logo.jpg"
                 alt="VSB Institutions Bus 09"
@@ -32,14 +32,14 @@ export const Navbar = () => {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-black text-slate-900 tracking-tight text-lg">
-                  <span className="text-emerald-700">Smart</span>Bus
+                <span className="font-black text-white tracking-tight text-lg">
+                  <span className="bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400 bg-clip-text text-transparent">Smart</span>Bus
                 </span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-black bg-yellow-400 text-slate-950 shadow-xs">
+                <span className="text-xs px-2 py-0.5 rounded-full font-black bg-yellow-400 text-slate-950 shadow-[0_0_12px_rgba(250,204,21,0.4)]">
                   BUS-09
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden sm:block font-medium">VSB Institutions • Bus Attendance</p>
+              <p className="text-xs text-emerald-400/80 hidden sm:block font-medium">VSB Institutions • Bus Attendance</p>
             </div>
           </div>
 
@@ -49,20 +49,20 @@ export const Navbar = () => {
               <>
                 <Link
                   to="/admin/dashboard"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition ${
                     isActive('/admin/dashboard')
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                      : 'text-emerald-200/80 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
                   Dashboard
                 </Link>
                 <Link
                   to="/admin/students"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition flex items-center space-x-1.5 ${
                     isActive('/admin/students')
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                      : 'text-emerald-200/80 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
                   <Users className="w-4 h-4" />
@@ -70,10 +70,10 @@ export const Navbar = () => {
                 </Link>
                 <Link
                   to="/admin/attendance"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition flex items-center space-x-1.5 ${
                     isActive('/admin/attendance')
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                      : 'text-emerald-200/80 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -81,10 +81,10 @@ export const Navbar = () => {
                 </Link>
                 <Link
                   to="/admin/trips"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition flex items-center space-x-1.5 ${
                     isActive('/admin/trips')
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                      : 'text-emerald-200/80 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
                   <MapPin className="w-4 h-4" />
@@ -97,10 +97,10 @@ export const Navbar = () => {
               <>
                 <Link
                   to="/driver/dashboard"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 ${
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition flex items-center space-x-1.5 ${
                     isActive('/driver/dashboard')
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                      : 'text-emerald-200/80 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
                   <Bus className="w-4 h-4" />
@@ -113,20 +113,20 @@ export const Navbar = () => {
               <>
                 <Link
                   to="/student/dashboard"
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition ${
+                  className={`px-3 py-2 rounded-xl text-sm font-bold transition ${
                     isActive('/student/dashboard')
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40'
+                      : 'text-emerald-200/80 hover:text-white hover:bg-emerald-950/60'
                   }`}
                 >
                   Overview
                 </Link>
                 <Link
                   to="/student/scan"
-                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition flex items-center space-x-1.5 ${
+                  className={`px-3.5 py-1.5 rounded-xl text-sm font-black transition flex items-center space-x-1.5 ${
                     isActive('/student/scan')
-                      ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-300'
-                      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                      ? 'bg-gradient-to-r from-yellow-400 via-lime-300 to-yellow-400 text-slate-950 shadow-[0_0_15px_rgba(250,204,21,0.4)] border border-yellow-300'
+                      : 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900/60'
                   }`}
                 >
                   <QrCode className="w-4 h-4" />
@@ -140,7 +140,7 @@ export const Navbar = () => {
           <div className="flex items-center space-x-3">
             <div className="text-right">
               <div className="flex items-center justify-end space-x-1.5">
-                <span className="text-sm font-semibold text-slate-800">
+                <span className="text-sm font-bold text-white">
                   {user.role === 'ADMIN'
                     ? (user.name && !user.name.includes('Ramanathan') ? user.name : 'R. Kowshiek IT')
                     : user.role === 'DRIVER'
@@ -148,19 +148,13 @@ export const Navbar = () => {
                     : user.name}
                 </span>
                 <span
-                  className={`text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded ${
-                    user.role === 'ADMIN'
-                      ? 'bg-purple-100 text-purple-700'
-                      : user.role === 'DRIVER'
-                      ? 'bg-amber-100 text-amber-800'
-                      : 'bg-emerald-100 text-emerald-800'
-                  }`}
+                  className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-lg bg-emerald-950/90 text-yellow-300 border border-emerald-500/40"
                 >
                   {user.role}
                 </span>
               </div>
               {student && (
-                <p className="text-xs text-slate-500 font-mono">
+                <p className="text-xs text-emerald-300/80 font-mono">
                   Roll: {student.rollNumber}
                 </p>
               )}
@@ -168,7 +162,7 @@ export const Navbar = () => {
 
             <button
               onClick={handleLogout}
-              className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+              className="p-2 text-emerald-400/80 hover:text-rose-400 hover:bg-rose-950/50 rounded-xl transition"
               title="Logout"
             >
               <LogOut className="w-5 h-5" />
@@ -179,11 +173,11 @@ export const Navbar = () => {
 
       {/* Mobile bottom nav for students */}
       {user.role === 'STUDENT' && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-2 flex justify-around items-center">
+        <div className="md:hidden border-t border-emerald-500/30 bg-[#040806] px-4 py-2 flex justify-around items-center">
           <Link
             to="/student/dashboard"
-            className={`flex flex-col items-center py-1 px-3 text-xs font-medium rounded-lg ${
-              isActive('/student/dashboard') ? 'text-indigo-600' : 'text-slate-500'
+            className={`flex flex-col items-center py-1 px-3 text-xs font-bold rounded-xl ${
+              isActive('/student/dashboard') ? 'text-yellow-400' : 'text-emerald-300/70'
             }`}
           >
             <User className="w-5 h-5 mb-0.5" />
@@ -191,8 +185,8 @@ export const Navbar = () => {
           </Link>
           <Link
             to="/student/scan"
-            className={`flex flex-col items-center py-1 px-3 text-xs font-medium rounded-lg ${
-              isActive('/student/scan') ? 'text-indigo-600 font-bold' : 'text-slate-500'
+            className={`flex flex-col items-center py-1 px-3 text-xs font-bold rounded-xl ${
+              isActive('/student/scan') ? 'text-yellow-400 font-black' : 'text-emerald-300/70'
             }`}
           >
             <QrCode className="w-5 h-5 mb-0.5" />

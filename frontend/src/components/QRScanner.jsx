@@ -147,40 +147,41 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
       <div id="qr-file-decoder-target" className="sr-only"></div>
 
       {/* Scanner Viewport Box */}
-      <div className="relative w-full aspect-square bg-slate-900 rounded-3xl overflow-hidden shadow-xl border-4 border-white">
+      {/* Scanner Viewport */}
+      <div className="relative w-full aspect-square bg-[#020B07] rounded-3xl overflow-hidden shadow-[0_0_35px_rgba(250,204,21,0.25)] border-2 border-yellow-400/80">
         <div id="reader-viewport" className="w-full h-full"></div>
 
         {/* Targeting Reticle Overlay */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-56 h-56 border-2 border-indigo-400/80 rounded-2xl relative">
+          <div className="w-56 h-56 border-2 border-yellow-400/80 rounded-2xl relative shadow-[0_0_15px_rgba(250,204,21,0.3)]">
             {/* Animated scanning beam */}
-            <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent animate-pulse"></div>
+            <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-lime-400 to-transparent animate-pulse shadow-[0_0_10px_#a3e635]"></div>
             {/* Corners */}
-            <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-lg"></div>
-            <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-lg"></div>
-            <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-bl-lg"></div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-lg"></div>
+            <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-yellow-400 rounded-tl-lg shadow-[0_0_10px_#facc15]"></div>
+            <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-yellow-400 rounded-tr-lg shadow-[0_0_10px_#facc15]"></div>
+            <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-yellow-400 rounded-bl-lg shadow-[0_0_10px_#facc15]"></div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-yellow-400 rounded-br-lg shadow-[0_0_10px_#facc15]"></div>
           </div>
         </div>
 
         {/* Loading Spinner */}
         {isInitializing && (
-          <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center text-white space-y-2 z-10">
-            <div className="w-8 h-8 border-3 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-xs font-medium">Accessing mobile camera...</p>
+          <div className="absolute inset-0 bg-[#020B07]/95 flex flex-col items-center justify-center text-white space-y-2 z-10">
+            <div className="w-8 h-8 border-3 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-xs font-bold text-yellow-300">Accessing mobile camera sensor...</p>
           </div>
         )}
 
         {/* Camera Permission / Error Fallback */}
         {cameraError && (
-          <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 text-center text-white z-20">
-            <AlertTriangle className="w-10 h-10 text-amber-400 mb-2" />
-            <p className="text-xs font-semibold text-slate-200 mb-4">{cameraError}</p>
+          <div className="absolute inset-0 bg-[#020B07]/98 flex flex-col items-center justify-center p-6 text-center text-white z-20">
+            <AlertTriangle className="w-10 h-10 text-yellow-400 mb-2" />
+            <p className="text-xs font-semibold text-slate-300 mb-4">{cameraError}</p>
             <div className="flex flex-col gap-2 w-full max-w-[220px]">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow"
+                className="px-3 py-2 bg-gradient-to-r from-yellow-400 via-lime-300 to-yellow-400 hover:from-yellow-300 hover:to-lime-200 text-slate-950 rounded-xl text-xs font-black transition flex items-center justify-center space-x-1.5 shadow-[0_0_15px_rgba(250,204,21,0.4)] cursor-pointer"
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>Upload QR from Gallery</span>
@@ -188,7 +189,7 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
               <button
                 type="button"
                 onClick={() => setShowManualInput(true)}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-medium transition"
+                className="px-3 py-1.5 bg-[#071911] border border-emerald-500/40 hover:border-yellow-400 text-emerald-300 hover:text-yellow-300 rounded-xl text-xs font-bold transition cursor-pointer"
               >
                 Enter Token Manually
               </button>
@@ -211,14 +212,14 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={fileScanning}
-          className="w-full py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-2xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-sm"
+          className="w-full py-2.5 px-4 bg-[#071911] hover:bg-[#0C2419] text-emerald-300 hover:text-yellow-300 border-2 border-emerald-500/50 hover:border-yellow-400 rounded-2xl text-xs font-black transition flex items-center justify-center space-x-2 shadow-[0_0_15px_rgba(16,185,129,0.15)] cursor-pointer"
         >
-          <Upload className="w-4 h-4 text-emerald-600" />
-          <span>{fileScanning ? 'Scanning Image...' : 'Upload QR from Gallery / WhatsApp'}</span>
+          <Upload className="w-4 h-4 text-yellow-400" />
+          <span>{fileScanning ? 'Decoding Image...' : 'Upload QR from Gallery / WhatsApp'}</span>
         </button>
 
         {fileError && (
-          <div className="w-full p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-[11px] text-center">
+          <div className="w-full p-2.5 bg-[#2D0B14] border border-rose-500/80 rounded-xl text-rose-200 text-[11px] text-center">
             {fileError}
           </div>
         )}
@@ -228,15 +229,15 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
           <button
             type="button"
             onClick={() => setShowManualInput(true)}
-            className="text-[11px] text-slate-500 hover:text-indigo-600 font-medium flex items-center justify-center space-x-1 mt-1"
+            className="text-[11px] text-emerald-400/80 hover:text-yellow-300 font-semibold flex items-center justify-center space-x-1 mt-1 cursor-pointer"
           >
-            <KeyRound className="w-3 h-3" />
+            <KeyRound className="w-3 h-3 text-yellow-400" />
             <span>Have a text token? Click for manual entry</span>
           </button>
         ) : (
-          <form onSubmit={handleManualSubmit} className="w-full bg-slate-50 p-3 rounded-2xl border border-slate-200 mt-1">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Enter 50-Minute QR Token
+          <form onSubmit={handleManualSubmit} className="w-full bg-[#071911] p-3 rounded-2xl border-2 border-emerald-500/40 mt-1">
+            <label className="block text-xs font-bold uppercase tracking-wider text-yellow-400 mb-1">
+              Enter Active QR Token
             </label>
             <div className="flex space-x-2">
               <input
@@ -244,11 +245,11 @@ export const QRScanner = ({ onScanSuccess, scanning = true }) => {
                 value={manualToken}
                 onChange={(e) => setManualToken(e.target.value)}
                 placeholder="Paste active token..."
-                className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 px-3 py-1.5 text-xs bg-[#020B07] border border-emerald-500/40 text-yellow-300 rounded-xl focus:outline-none focus:border-yellow-400 font-mono"
               />
               <button
                 type="submit"
-                className="px-3 py-1.5 bg-indigo-600 text-white text-xs font-medium rounded-xl hover:bg-indigo-700 transition"
+                className="px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-lime-300 text-slate-950 text-xs font-black rounded-xl hover:from-yellow-300 hover:to-lime-200 transition cursor-pointer"
               >
                 Submit
               </button>
