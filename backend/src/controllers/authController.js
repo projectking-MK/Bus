@@ -102,10 +102,27 @@ export const login = async (req, res) => {
 
     let studentData = null;
     if (user.role === 'STUDENT') {
+      const { latitude, longitude, accuracy } = req.body;
+      const updateFields = {};
       if (activeTrip) {
+        updateFields.lastLoginTripId = activeTrip._id;
+      }
+      if (latitude !== undefined && longitude !== undefined && latitude !== null && longitude !== null) {
+        const sLat = Number(latitude);
+        const sLon = Number(longitude);
+        const sAcc = accuracy !== undefined && accuracy !== null && !isNaN(Number(accuracy)) ? Number(accuracy) : null;
+        if (!isNaN(sLat) && !isNaN(sLon)) {
+          updateFields.lastLatitude = sLat;
+          updateFields.lastLongitude = sLon;
+          updateFields.lastGpsAccuracy = sAcc;
+          updateFields.lastLocationUpdate = new Date();
+        }
+      }
+
+      if (Object.keys(updateFields).length > 0) {
         studentData = await Student.findOneAndUpdate(
           { userId: user._id },
-          { $set: { lastLoginTripId: activeTrip._id } },
+          { $set: updateFields },
           { new: true }
         );
       } else {

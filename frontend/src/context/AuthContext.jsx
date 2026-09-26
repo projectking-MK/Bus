@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 import { getOrCreateDeviceIdentifier, getDeviceInfo } from '../utils/deviceFingerprint';
-import { forceEnableLocation, saveCachedPosition } from '../utils/geolocation';
+import { forceEnableLocation, saveCachedPosition, getCurrentPosition, getRefinedPosition } from '../utils/geolocation';
 
 const AuthContext = createContext();
 
@@ -38,9 +38,10 @@ export const AuthProvider = ({ children }) => {
               localStorage.setItem('smart_bus_user_role', res.data.user.role);
             }
 
-            // If student, verify device auto-registration
+            // If student, verify device auto-registration & automatically obtain current GPS
             if (res.data.user.role === 'STUDENT') {
               await checkAndRegisterDevice(res.data.student);
+              obtainAndBroadcastStudentLocation();
             }
           }
         } catch (err) {
@@ -185,13 +186,87 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (identifier, password) => {
-    const res = await axiosClient.post('/api/auth/login', {
+  const obtainAndBroadcastStudentLocation = async (options = {}) => {
+    try {
+      // 1. Check if we have recent cached GPS in localStorage
+      let cachedGps = null;
+      try {
+        const raw = localStorage.getItem('smart_bus_last_gps');
+        if (raw) cachedGps = JSON.parse(raw);
+      } catch (_) {}
+
+      // 2. Automatically obtain fresh high-precision position from device GPS
+      let pos = null;
+      try {
+        pos = await getRefinedPosition({
+          targetAccuracy: 65,
+          acceptableAccuracy: 100,
+          maxWaitMs: 3000,
+          ...options,
+        });
+      } catch (err) {
+        pos = await getCurrentPosition({ timeout: 4000, enableHighAccuracy: true })
+          .catch(() => forceEnableLocation());
+      }
+
+      if (!pos && cachedGps && cachedGps.latitude) {
+        pos = cachedGps;
+      }
+
+      if (pos && pos.latitude && pos.longitude) {
+        saveCachedPosition(pos);
+        setStudentCoords({
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          accuracy: pos.accuracy || 15,
+          updatedAt: new Date(),
+        });
+        setStudentGpsStatus('Live GPS Active');
+        setIsLocationTurnedOff(false);
+
+        // Send immediately to backend location update endpoint
+        await axiosClient.post('/api/students/location', {
+          latitude: pos.latitude,
+          longitude: pos.longitude,
+          accuracy: pos.accuracy || 15,
+        });
+
+        return pos;
+      }
+    } catch (err) {
+      console.warn('[Auto GPS on Login Error]', err.message);
+    }
+    return null;
+  };
+
+  const login = async (identifier, password, coords = null) => {
+    let loginCoords = coords;
+    if (!loginCoords) {
+      try {
+        const raw = localStorage.getItem('smart_bus_last_gps');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.latitude && Date.now() - (parsed.timestamp || 0) < 120000) {
+            loginCoords = parsed;
+          }
+        }
+      } catch (_) {}
+    }
+
+    const payload = {
       identifier,
       email: identifier,
       username: identifier,
       password,
-    });
+    };
+
+    if (loginCoords && loginCoords.latitude && loginCoords.longitude) {
+      payload.latitude = loginCoords.latitude;
+      payload.longitude = loginCoords.longitude;
+      payload.accuracy = loginCoords.accuracy || null;
+    }
+
+    const res = await axiosClient.post('/api/auth/login', payload);
     if (res.data.success) {
       const { token: newToken, user: newUser, student: newStudent, activeTrip: tripData } = res.data;
       localStorage.setItem('smart_bus_auth_token', newToken);
@@ -213,6 +288,8 @@ export const AuthProvider = ({ children }) => {
       // Fast non-blocking device check so login navigates instantly
       if (newUser.role === 'STUDENT') {
         checkAndRegisterDevice(newStudent);
+        // Automatically obtain and broadcast current GPS location every time student logs in
+        obtainAndBroadcastStudentLocation();
       }
 
       return { success: true, user: newUser, activeTrip: tripData };
@@ -288,6 +365,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         refreshProfile,
         turnOnLocation,
+        obtainAndBroadcastStudentLocation,
         checkAndRegisterDevice,
         isAuthenticated: !!user,
         deviceIdentifier: getOrCreateDeviceIdentifier(),

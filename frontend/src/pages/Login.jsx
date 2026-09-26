@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Bus, Lock, Mail, AlertCircle, Eye, EyeOff, Phone, PhoneCall, X } from 'lucide-react';
+import { getCurrentPosition, saveCachedPosition } from '../utils/geolocation';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -28,13 +29,35 @@ export const Login = () => {
     }
   }, [user, navigate, token, isDriverSession]);
 
+  // Pre-warm and obtain current GPS location in background when user opens login page
+  useEffect(() => {
+    getCurrentPosition({ timeout: 5000, maximumAge: 60000, enableHighAccuracy: true })
+      .then((pos) => {
+        if (pos) saveCachedPosition(pos);
+      })
+      .catch(() => {
+        // Silently ignore permission/timeout on initial load
+      });
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
+    // Fast acquisition of current GPS coordinates to link with login
+    let currentGps = null;
     try {
-      const result = await login(email, password);
+      currentGps = await getCurrentPosition({ timeout: 2500, enableHighAccuracy: true });
+    } catch (_) {
+      try {
+        const raw = localStorage.getItem('smart_bus_last_gps');
+        if (raw) currentGps = JSON.parse(raw);
+      } catch (e) {}
+    }
+
+    try {
+      const result = await login(email, password, currentGps);
       if (result.success) {
         const role = result.user.role;
         if (role === 'ADMIN') navigate('/admin/dashboard');
