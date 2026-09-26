@@ -131,11 +131,9 @@ export const StudentDashboard = () => {
     setIsValidatingGps(true);
     setLocationWarning(null);
 
-    // Attempt platform settings URI (Android intent, iOS app-settings, Windows ms-settings)
-    openDeviceLocationSettings();
-
     try {
-      const pos = turnOnLocation ? await turnOnLocation() : await forceEnableLocation();
+      // Calling turnOnLocation will prompt the browser's location permission dialog
+      const pos = await turnOnLocation();
       setGpsValidationResult({
         success: true,
         coords: pos,
@@ -152,7 +150,7 @@ export const StudentDashboard = () => {
       }
     } catch (err) {
       console.warn('[handleTurnOnLocationClick Error]', err);
-      setLocationWarning(err.message || 'Unable to automatically acquire location.');
+      setLocationWarning(err.message || 'Location permission was denied or device GPS is off.');
       setShowSettingsModal(true);
     } finally {
       setIsValidatingGps(false);
@@ -254,12 +252,12 @@ export const StudentDashboard = () => {
             {isValidatingGps ? (
               <>
                 <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Turning ON & Validating...</span>
+                <span>Requesting Browser Permission...</span>
               </>
             ) : (
               <>
                 <Navigation className="w-4 h-4" />
-                <span>Turn On Location & Validate</span>
+                <span>Turn On Location Services</span>
               </>
             )}
           </button>
@@ -349,9 +347,9 @@ export const StudentDashboard = () => {
             <button
               onClick={handleTurnOnLocationClick}
               disabled={isValidatingGps}
-              className="px-2.5 py-1 rounded-xl text-[11px] font-bold bg-rose-600 hover:bg-rose-700 text-white flex-shrink-0 transition shadow-sm cursor-pointer"
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white flex-shrink-0 transition shadow-sm cursor-pointer"
             >
-              Turn ON
+              Turn On Location Services
             </button>
           ) : (
             <span className="hidden md:inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-indigo-50 text-indigo-700 border border-indigo-100 flex-shrink-0">

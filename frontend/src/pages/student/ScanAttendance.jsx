@@ -173,9 +173,9 @@ export const ScanAttendance = () => {
   };
 
   const handleTurnOnLocationClick = async () => {
-    openDeviceLocationSettings();
     try {
-      const pos = turnOnLocation ? await turnOnLocation() : await forceEnableLocation();
+      // Direct call prompts the browser's location permission dialog
+      const pos = await turnOnLocation();
       setCachedPosition(pos);
       setLocationStatus('ready');
       setIsLocationOff(false);
@@ -185,6 +185,9 @@ export const ScanAttendance = () => {
       setErrorDetails(null);
     } catch (err) {
       console.warn('[handleTurnOnLocationClick Error]', err);
+      setIsLocationOff(true);
+      if (setIsLocationTurnedOff) setIsLocationTurnedOff(true);
+      setLocationMessage(err.message || 'Location permission was denied or device GPS is off.');
       setShowSettingsModal(true);
     }
   };
@@ -500,7 +503,7 @@ export const ScanAttendance = () => {
                 onClick={handleTurnOnLocationClick}
                 className="self-stretch sm:self-auto px-4 py-2 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold rounded-xl text-xs flex-shrink-0 transition shadow-sm cursor-pointer whitespace-nowrap"
               >
-                Turn On Location & Validate
+                Turn On Location Services
               </button>
             </div>
           ) : locationStatus === 'insecure' ? (

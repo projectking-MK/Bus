@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Bus, Lock, Mail, AlertCircle, Eye, EyeOff, Phone, PhoneCall, X } from 'lucide-react';
-import { getCurrentPosition, saveCachedPosition } from '../utils/geolocation';
+import { Bus, Lock, Mail, AlertCircle, Eye, EyeOff, Phone, PhoneCall, X, Navigation } from 'lucide-react';
+import { getCurrentPosition, saveCachedPosition, isLocationOffError } from '../utils/geolocation';
 
 export const Login = () => {
   const [email, setEmail] = useState('');
@@ -11,6 +11,8 @@ export const Login = () => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [locationWarning, setLocationWarning] = useState(null);
+  const [requestingLocation, setRequestingLocation] = useState(false);
 
   const { user, login } = useAuth();
   const navigate = useNavigate();
@@ -29,16 +31,78 @@ export const Login = () => {
     }
   }, [user, navigate, token, isDriverSession]);
 
-  // Pre-warm and obtain current GPS location in background when user opens login page
+  // Pre-warm and obtain current GPS location; detect if location is off/denied
   useEffect(() => {
+    if (typeof window !== 'undefined' && navigator?.permissions?.query) {
+      navigator.permissions.query({ name: 'geolocation' })
+        .then((status) => {
+          if (status.state === 'denied') {
+            setLocationWarning('Device Location is turned OFF or blocked in browser.');
+          }
+          status.onchange = () => {
+            if (status.state === 'denied') {
+              setLocationWarning('Device Location is turned OFF or blocked in browser.');
+            } else if (status.state === 'granted') {
+              setLocationWarning(null);
+              getCurrentPosition({ timeout: 5000, enableHighAccuracy: true })
+                .then(saveCachedPosition)
+                .catch(() => {});
+            }
+          };
+        })
+        .catch(() => {});
+    }
+
     getCurrentPosition({ timeout: 5000, maximumAge: 60000, enableHighAccuracy: true })
       .then((pos) => {
-        if (pos) saveCachedPosition(pos);
+        if (pos) {
+          saveCachedPosition(pos);
+          setLocationWarning(null);
+        }
       })
-      .catch(() => {
-        // Silently ignore permission/timeout on initial load
+      .catch((err) => {
+        if (err.code === 1 || err.code === 2 || isLocationOffError(err)) {
+          setLocationWarning(
+            err.code === 1
+              ? 'Location permission was denied. Please turn on location services.'
+              : 'Device Location / GPS is turned OFF. Please turn on location services.'
+          );
+        }
       });
   }, []);
+
+  const handleTurnOnLocationServices = () => {
+    setRequestingLocation(true);
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
+      setLocationWarning('Geolocation is not supported by your browser.');
+      setRequestingLocation(false);
+      return;
+    }
+
+    // Direct call triggers browser's native location permission prompt
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        saveCachedPosition({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy || 15),
+          timestamp: pos.timestamp || Date.now(),
+        });
+        setLocationWarning(null);
+        setRequestingLocation(false);
+      },
+      (err) => {
+        console.warn('[Login Location Request Error]', err);
+        setLocationWarning(
+          err.code === 1
+            ? 'Location permission denied. Please allow location access in browser settings.'
+            : 'Device Location / GPS is turned OFF. Please turn on Location in your phone settings.'
+        );
+        setRequestingLocation(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -158,6 +222,23 @@ export const Login = () => {
               <div className="p-3.5 bg-rose-950/70 border-2 border-rose-500/70 rounded-2xl text-xs font-bold text-rose-300 flex items-center space-x-2 shadow-lg">
                 <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
                 <span>{error}</span>
+              </div>
+            )}
+
+            {locationWarning && (
+              <div className="p-3.5 bg-rose-950/80 border-2 border-rose-500/80 rounded-2xl text-xs text-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-lg">
+                <div className="flex items-start sm:items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400 mt-0.5 sm:mt-0" />
+                  <span className="font-semibold">{locationWarning}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTurnOnLocationServices}
+                  disabled={requestingLocation}
+                  className="px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-amber-300 hover:from-yellow-300 hover:to-amber-200 active:scale-95 text-slate-950 text-xs font-black rounded-xl transition shadow-md flex-shrink-0 cursor-pointer text-center"
+                >
+                  {requestingLocation ? 'Requesting Permission...' : 'Turn On Location Services'}
+                </button>
               </div>
             )}
 

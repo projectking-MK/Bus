@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 import { getOrCreateDeviceIdentifier, getDeviceInfo } from '../utils/deviceFingerprint';
-import { forceEnableLocation, saveCachedPosition, getCurrentPosition, getRefinedPosition } from '../utils/geolocation';
+import { forceEnableLocation, saveCachedPosition, getCurrentPosition, getRefinedPosition, isLocationOffError } from '../utils/geolocation';
 
 const AuthContext = createContext();
 
@@ -55,6 +55,29 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Proactively check browser location permission state
+  useEffect(() => {
+    if (typeof window !== 'undefined' && navigator?.permissions?.query) {
+      navigator.permissions.query({ name: 'geolocation' })
+        .then((permissionStatus) => {
+          if (permissionStatus.state === 'denied') {
+            setIsLocationTurnedOff(true);
+            setStudentGpsStatus('Location Permission Denied');
+          }
+          permissionStatus.onchange = () => {
+            if (permissionStatus.state === 'denied') {
+              setIsLocationTurnedOff(true);
+              setStudentGpsStatus('Location Permission Denied');
+            } else if (permissionStatus.state === 'granted') {
+              setIsLocationTurnedOff(false);
+              turnOnLocation().catch(() => {});
+            }
+          };
+        })
+        .catch(() => {});
+    }
+  }, []);
+
   // Continuous 1-second live GPS streaming for student - matches driver GPS engine exactly and never locks coordinates
   useEffect(() => {
     let watchId = null;
@@ -105,21 +128,22 @@ export const AuthProvider = ({ children }) => {
           },
           (err) => {
             console.warn('[Student GPS Watch Warning]', err.message);
-            let saved = null;
-            try {
-              const raw = localStorage.getItem('smart_bus_last_gps');
-              if (raw) saved = JSON.parse(raw);
-            } catch (_) {}
-
-            if (saved && saved.latitude) {
-              sendLocationUpdate(saved.latitude, saved.longitude, saved.accuracy || 25);
-              setIsLocationTurnedOff(false);
-              setStudentGpsStatus('Live GPS Active');
+            if (err.code === 1 || err.code === 2 || isLocationOffError(err)) {
+              setIsLocationTurnedOff(true);
+              setStudentGpsStatus(err.code === 1 ? 'Location Permission Denied' : 'Device Location is OFF');
             } else {
-              if (err.code === 1 || err.code === 2) {
-                setIsLocationTurnedOff(true);
+              let saved = null;
+              try {
+                const raw = localStorage.getItem('smart_bus_last_gps');
+                if (raw) saved = JSON.parse(raw);
+              } catch (_) {}
+
+              if (saved && saved.latitude) {
+                sendLocationUpdate(saved.latitude, saved.longitude, saved.accuracy || 25);
+                setStudentGpsStatus('Live GPS Active');
+              } else {
+                setStudentGpsStatus('GPS Warning (Check permissions)');
               }
-              setStudentGpsStatus('GPS Warning (Check permissions)');
             }
           },
           { enableHighAccuracy: true, maximumAge: 15000, timeout: 15000 }
@@ -134,19 +158,19 @@ export const AuthProvider = ({ children }) => {
               setIsLocationTurnedOff(false);
             },
             (err) => {
-              let saved = null;
-              try {
-                const raw = localStorage.getItem('smart_bus_last_gps');
-                if (raw) saved = JSON.parse(raw);
-              } catch (_) {}
-
-              if (saved && saved.latitude) {
-                sendLocationUpdate(saved.latitude, saved.longitude, saved.accuracy || 25);
-                setIsLocationTurnedOff(false);
-                setStudentGpsStatus('Live GPS Active');
+              if (err.code === 1 || err.code === 2 || isLocationOffError(err)) {
+                setIsLocationTurnedOff(true);
+                setStudentGpsStatus(err.code === 1 ? 'Location Permission Denied' : 'Device Location is OFF');
               } else {
-                if (err.code === 1 || err.code === 2) {
-                  setIsLocationTurnedOff(true);
+                let saved = null;
+                try {
+                  const raw = localStorage.getItem('smart_bus_last_gps');
+                  if (raw) saved = JSON.parse(raw);
+                } catch (_) {}
+
+                if (saved && saved.latitude) {
+                  sendLocationUpdate(saved.latitude, saved.longitude, saved.accuracy || 25);
+                  setStudentGpsStatus('Live GPS Active');
                 }
               }
               console.warn('[Student GPS Interval Warning]', err.message);
@@ -205,8 +229,19 @@ export const AuthProvider = ({ children }) => {
           ...options,
         });
       } catch (err) {
+        if (isLocationOffError(err) || err.code === 1 || err.code === 2) {
+          setIsLocationTurnedOff(true);
+          setStudentGpsStatus(err.code === 1 ? 'Location Permission Denied' : 'Device Location is OFF');
+          return null;
+        }
         pos = await getCurrentPosition({ timeout: 4000, enableHighAccuracy: true })
-          .catch(() => forceEnableLocation());
+          .catch((e) => {
+            if (isLocationOffError(e) || e.code === 1 || e.code === 2) {
+              setIsLocationTurnedOff(true);
+              setStudentGpsStatus(e.code === 1 ? 'Location Permission Denied' : 'Device Location is OFF');
+            }
+            return null;
+          });
       }
 
       if (!pos && cachedGps && cachedGps.latitude) {
@@ -235,6 +270,10 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (err) {
       console.warn('[Auto GPS on Login Error]', err.message);
+      if (isLocationOffError(err) || err.code === 1 || err.code === 2) {
+        setIsLocationTurnedOff(true);
+        setStudentGpsStatus(err.code === 1 ? 'Location Permission Denied' : 'Device Location is OFF');
+      }
     }
     return null;
   };
@@ -330,28 +369,66 @@ export const AuthProvider = ({ children }) => {
   };
 
   const turnOnLocation = async () => {
-    try {
-      const pos = await forceEnableLocation();
-      try {
-        await axiosClient.post('/api/students/location', {
-          latitude: pos.latitude,
-          longitude: pos.longitude,
-          accuracy: pos.accuracy || 15,
-        });
-      } catch (_) {}
-      setStudentCoords({
-        latitude: pos.latitude,
-        longitude: pos.longitude,
-        accuracy: pos.accuracy || 15,
-        updatedAt: new Date(),
-      });
-      setStudentGpsStatus('Live GPS Active');
-      setIsLocationTurnedOff(false);
-      return pos;
-    } catch (err) {
-      console.warn('[turnOnLocation Error]', err);
-      throw err;
+    if (typeof window === 'undefined' || !navigator?.geolocation) {
+      throw new Error('Geolocation is not supported by your browser.');
     }
+
+    return new Promise((resolve, reject) => {
+      // Calling getCurrentPosition with maximumAge: 0 prompts the browser's location permission dialog
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude, accuracy } = position.coords;
+            const newPos = {
+              latitude,
+              longitude,
+              accuracy: Math.round(accuracy || 15),
+              timestamp: position.timestamp || Date.now(),
+            };
+
+            saveCachedPosition(newPos);
+            setStudentCoords(newPos);
+            setStudentGpsStatus('Live GPS Active');
+            setIsLocationTurnedOff(false);
+
+            await axiosClient.post('/api/students/location', {
+              latitude: newPos.latitude,
+              longitude: newPos.longitude,
+              accuracy: newPos.accuracy,
+            }).catch(() => {});
+
+            resolve(newPos);
+          } catch (err) {
+            const fallbackPos = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: Math.round(position.coords.accuracy || 15),
+              timestamp: Date.now(),
+            };
+            setIsLocationTurnedOff(false);
+            resolve(fallbackPos);
+          }
+        },
+        (error) => {
+          console.warn('[turnOnLocation Error]', error.code, error.message);
+          let userMsg = 'Unable to access location services.';
+          if (error.code === 1) { // PERMISSION_DENIED
+            setIsLocationTurnedOff(true);
+            userMsg = 'Location permission was denied. Please allow location access in your browser.';
+          } else if (error.code === 2) { // POSITION_UNAVAILABLE
+            setIsLocationTurnedOff(true);
+            userMsg = 'Device GPS / Location is turned OFF. Please turn on Location in your device settings.';
+          } else if (error.code === 3) {
+            userMsg = 'Location request timed out. Please try again.';
+          }
+          const errObj = new Error(userMsg);
+          errObj.code = error.code;
+          errObj.isLocationOff = error.code === 1 || error.code === 2;
+          reject(errObj);
+        },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    });
   };
 
   return (
